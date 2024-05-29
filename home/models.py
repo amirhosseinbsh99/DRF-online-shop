@@ -29,7 +29,7 @@ class Product(models.Model):
 
     def __str__(self):
 
-        return str(self.ProductName) - str(self.Status) - str(self.Price)
+        return f"{self.Name} - {self.Available} - {self.Price}"
 
 
 
