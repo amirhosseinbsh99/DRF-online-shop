@@ -2,47 +2,31 @@ from django.db import models
 
 
 class Category(models.Model):
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(unique=True, max_length=200)
+    created_date = models.DateTimeField(auto_now_add=True)
+    updated_date = models.DateTimeField(auto_now=True)
 
-
-
-    Title = models.CharField(max_length = 250)
-    Slug = models.SlugField(unique = True , max_length = 250)
-    Created_date = models.DateTimeField(auto_now_add = True)
-    Updated_date = models.DateTimeField(auto_now = True)
-
-    
     def __str__(self):
-
-        return f'{self.id} , {self.Title}'
+        return f'{self.id}, {self.title}'
     
+
 class Product(models.Model):
-
-    Category = models.ForeignKey("Category" , null = True ,  blank = True , on_delete = models.SET_NULL)
-    Name = models.CharField(max_length = 250)
-    Content = models.TextField()
-    Image = models.ImageField(upload_to = 'blog/' , null = True , blank = True)
-    Available = models.BooleanField(default=True)
-    Price = models.IntegerField()
-    Stock = models.PositiveIntegerField()
-    Created_at = models.DateTimeField(auto_now_add=True)
-    Updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-
-        return f"{self.Name} - {self.Available} - {self.Price}"
-
-
-
-
-class Comment(models.Model):
-    Products = models.ForeignKey(Product,on_delete=models.CASCADE,related_name='comments')
-    name = models.CharField(max_length=80)
-    email = models.EmailField()
-    body = models.TextField()
-    created_on = models.DateTimeField(auto_now_add=True)
-    active = models.BooleanField(default=False)
-    class Meta:
-        ordering = ['created_on']
+    category = models.ForeignKey("Category", null=True, blank=True, on_delete=models.SET_NULL)
+    name = models.CharField(max_length=200)
+    brand = models.CharField(max_length=100, null=True, blank=True)
+    description  = models.TextField()
+    model_number = models.CharField(max_length=100, null=True, blank=True)
+    image = models.ImageField(upload_to='blog/', null=True, blank=True)
+    available = models.BooleanField(default=True)
+    price = models.IntegerField()
+    stock = models.PositiveIntegerField()
+    color = models.CharField(max_length=30)
+    size = models.CharField(max_length=10)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return 'Comment {} by {}'.format(self.body, self.name)
+        return f"{self.name} - {self.available} - {self.price}"
+    
+

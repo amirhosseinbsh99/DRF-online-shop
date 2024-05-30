@@ -2,24 +2,20 @@ from django.contrib import admin
 from .models import Category, Product
 from accounts.models import Customer
 
-
-
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('username','PhoneNumber')
-    
-
+    list_display = ('username', 'phone_number')
 
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('Title','Slug')
+    list_display = ('title', 'slug')
+
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('Name', 'Category', 'Price', 'Stock', 'Available', 'Created_at', 'Updated_at')
-    list_filter = ('Available', 'Category')
-    search_fields = ('Name',)
-
+    list_display = ('name', 'category', 'price', 'stock', 'available', 'created_at', 'updated_at')
+    list_filter = ('available', 'category')
+    search_fields = ('name',)
 
 
 admin.site.register(Customer,CustomerAdmin)
