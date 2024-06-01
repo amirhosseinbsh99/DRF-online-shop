@@ -4,27 +4,14 @@ from django.contrib.auth.models import AbstractUser
 
 
 class Customer(AbstractUser):
+    phone_number = models.CharField(max_length=11, unique=True)
+    post_Code = models.IntegerField(null=True, blank=True)
+    is_admin = models.BooleanField(default=False)
 
-	
-	phone_number = models.CharField(max_length = 250 , null = True , blank = True)
-	post_Code = models.IntegerField(null = True , blank = True)
-	
-	first_name = None
-	last_name = None
-	
+    def save(self, *args, **kwargs):
+        # Set the username to be the same as the phone_number
+        self.username = self.phone_number
+        super().save(*args, **kwargs)
 
-
-
-
-	
-
-
-	
-
-
-
-
-
-
-
-
+    def __str__(self):
+        return self.phone_number if self.phone_number else ""

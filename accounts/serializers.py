@@ -1,0 +1,25 @@
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from rest_framework.validators import UniqueValidator
+from .models import Customer
+
+
+class CustomerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = ['phone_number', 'password']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def validate_phone_number(self, value):
+        if len(value) != 11:
+            raise serializers.ValidationError("شماره موبایل باید 11 رقمی باشد")
+        return value
+
+    def create(self, validated_data):
+        customer = Customer(
+            phone_number=validated_data['phone_number'],
+        )
+        customer.set_password(validated_data['password'])
+        customer.save()
+        return customer

@@ -1,11 +1,15 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status
 from rest_framework.generics import ListAPIView
 from .models import Product,Category
 from .serializers import ProductSerializer
 from rest_framework import filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
+from accounts.views import IsAdminUser
+
+
 
 class HomeView(ListAPIView):
     queryset = Product.objects.filter(available=True)
@@ -37,6 +41,21 @@ class ProductSearchView(ListAPIView):
     filter_backends = [drf_filters.SearchFilter, DjangoFilterBackend]
     search_fields = ['name', 'category__title', 'price', 'size', 'color']
     filterset_class = ProductFilter  # Use the filter set here
+
+class ProductAdmin(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        request.data 
+        serializer = ProductSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+    def get(self, request):
+        products = Product.objects.all()
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data)
+    
+        
         
     
         

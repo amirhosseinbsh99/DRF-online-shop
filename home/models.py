@@ -22,7 +22,9 @@ class Product(models.Model):
     price = models.IntegerField()
     stock = models.PositiveIntegerField()
     color = models.CharField(max_length=30)
+    star_rating = models.IntegerField()
     size = models.CharField(max_length=10)
+    material = models.CharField(max_length=30)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
