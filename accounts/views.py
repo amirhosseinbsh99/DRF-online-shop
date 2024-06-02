@@ -56,6 +56,7 @@ class DashboardView(APIView):
         else:
             # If an id is provided, fetch the customer with that id
             customer = get_object_or_404(Customer, id=id)
+        
 
         customer.password=''
         # Serialize the customer data
@@ -68,9 +69,20 @@ class DashboardView(APIView):
         else:
             customer = get_object_or_404(Customer, id=id)
 
-        serializer = DashboardViewSerializer(customer, data=request.data, partial=True)
+        data = request.data.copy()
+        password = data.pop('password', None)
+
+        # Update other fields
+        serializer = DashboardViewSerializer(customer, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            customer.password=''
+
+            # Update password if provided
+            if password:
+                customer.set_password(password)
+                customer.save()
+
+            # Return the updated customer data without password
+            customer.password = ''
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
