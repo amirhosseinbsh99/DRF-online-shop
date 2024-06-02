@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'accounts',
     'rest_framework',
     'django_filters',
+    'unidecode',
 ]
 
 MIDDLEWARE = [

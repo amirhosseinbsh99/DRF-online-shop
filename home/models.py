@@ -1,14 +1,23 @@
 from django.db import models
 
+from django.utils.text import slugify
+import unidecode
 
 class Category(models.Model):
     title = models.CharField(max_length=200)
-    slug = models.SlugField(unique=True, max_length=200)
+    slug = models.SlugField(unique=True, max_length=200, blank=True, allow_unicode=True)
     created_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'{self.id}, {self.title}'
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            # Use unidecode to convert Persian characters to ASCII for the slug
+            self.slug = slugify(unidecode.unidecode(self.title), allow_unicode=True)
+        super().save(*args, **kwargs)
+            
     
 
 class Product(models.Model):

@@ -75,21 +75,21 @@ class CategoryAdmin(APIView):
 class Shoeview(APIView):
 
     def get(self, request):
-        category = Category.objects.filter(title__icontains="shoe").order_by('-created_date')
+        category = Category.objects.filter(title__icontains="کفش").order_by('-created_date')
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
     
 class ShirtView(APIView):
 
     def get(self, request):
-        category = Category.objects.filter(title__icontains="Shirt").order_by('-created_date')
+        category = Category.objects.filter(title__icontains="لباس").order_by('-created_date')
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
     
 class PantsView(APIView):
 
     def get(self, request):
-        category = Category.objects.filter(title__icontains="pants").order_by('-created_date')
+        category = Category.objects.filter(title__icontains="شلوار").order_by('-created_date')
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
         
