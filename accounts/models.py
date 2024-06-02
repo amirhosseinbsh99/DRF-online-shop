@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractUser
 
 
 class Customer(AbstractUser):
+    
     phone_number = models.CharField(max_length=11, unique=True)
     post_Code = models.IntegerField(null=True, blank=True)
     is_admin = models.BooleanField(default=False)

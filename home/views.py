@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.generics import ListAPIView
 from .models import Product,Category
-from .serializers import ProductSerializer
+from .serializers import ProductSerializer,CategorySerializer
 from rest_framework import filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
@@ -50,12 +50,48 @@ class ProductAdmin(APIView):
         serializer = ProductSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
     def get(self, request):
         products = Product.objects.all()
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
     
-        
+class CategoryAdmin(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        request.data 
+        serializer = CategorySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    def get(self, request):
+        category = Category.objects.all().order_by('-created_date')
+        serializer = CategorySerializer(category, many=True)
+        return Response(serializer.data)
+    
+class Shoeview(APIView):
+
+    def get(self, request):
+        category = Category.objects.filter(title__icontains="shoe").order_by('-created_date')
+        serializer = CategorySerializer(category, many=True)
+        return Response(serializer.data)
+    
+class ShirtView(APIView):
+
+    def get(self, request):
+        category = Category.objects.filter(title__icontains="Shirt").order_by('-created_date')
+        serializer = CategorySerializer(category, many=True)
+        return Response(serializer.data)
+    
+class PantsView(APIView):
+
+    def get(self, request):
+        category = Category.objects.filter(title__icontains="pants").order_by('-created_date')
+        serializer = CategorySerializer(category, many=True)
+        return Response(serializer.data)
         
     
         
