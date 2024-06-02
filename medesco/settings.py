@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
     'unidecode',
+    
 ]
 
 MIDDLEWARE = [
@@ -47,8 +48,9 @@ REST_FRAMEWORK = {
         
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
-
-        
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
     )
 }
 
@@ -130,3 +132,8 @@ MEDIA_ROOT = BASE_DIR / 'products'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AUTHENTICATION_BACKENDS = [
+    'accounts.auth_backend.PhoneNumberBackend',
+    'django.contrib.auth.backends.ModelBackend',  # Keep the default backend
+]

@@ -1,5 +1,4 @@
 from django.db import models
-
 from django.utils.text import slugify
 import unidecode
 
@@ -18,7 +17,6 @@ class Category(models.Model):
             self.slug = slugify(unidecode.unidecode(self.title), allow_unicode=True)
         super().save(*args, **kwargs)
             
-    
 
 class Product(models.Model):
     category = models.ForeignKey("Category", null=True, blank=True, on_delete=models.SET_NULL)
@@ -33,7 +31,7 @@ class Product(models.Model):
     color = models.CharField(max_length=30)
     star_rating = models.IntegerField()
     size = models.CharField(max_length=10)
-    material = models.CharField(max_length=30)
+    material = models.CharField(max_length=30, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

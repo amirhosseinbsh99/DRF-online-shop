@@ -23,3 +23,12 @@ class CustomerSerializer(serializers.ModelSerializer):
         customer.set_password(validated_data['password'])
         customer.save()
         return customer
+    
+class CustomerLoginSerializer(serializers.Serializer):
+    phone_number = serializers.CharField()
+    password = serializers.CharField()
+
+class DashboardViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        exclude = ['is_admin','is_superuser','id','groups','user_permissions','is_staff','is_active']

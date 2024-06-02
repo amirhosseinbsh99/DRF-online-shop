@@ -46,7 +46,7 @@ class ProductAdmin(APIView):
     permission_classes = [IsAdminUser]
 
     def post(self, request):
-        request.data 
+        request.data
         serializer = ProductSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
