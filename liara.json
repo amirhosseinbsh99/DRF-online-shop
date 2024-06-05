@@ -1,0 +1,13 @@
+{
+    "disks":[
+        {
+            "name":"data",
+            "mountTo" : "data"
+        },
+        
+        {
+            "name": "products",
+            "mountTo" : "products"
+        }
+    ]
+}

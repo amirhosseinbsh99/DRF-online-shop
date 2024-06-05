@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import HomeView,ProductAdmin,ProductSearchView,CategoryAdmin,Shoeview,ShirtView,PantsView
+from .views import HomeView,ProductListCreateAdmin,BasketView,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,Shoeview,ShirtView,PantsView,ProductDetailAdmin
 
 
 app_name = 'home'
@@ -9,14 +9,17 @@ urlpatterns = [
 
         path('', HomeView.as_view(), name='ProductView'),
         path('Search/', ProductSearchView.as_view(), name='ProductSearchView'),
-        path('Padmin/', ProductAdmin.as_view(), name='ProductAdmin'),
-        path('Padmin/Create/', ProductAdmin.as_view(), name='CreateProductAdmin'),
-        path('Padmin/<int:id>/', ProductAdmin.as_view(), name='EditProductAdmin'),
-        path('Padmin/Category/Create/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
-        path('Shoes/', Shoeview.as_view(), name='Shoeview'),
-        path('Shirts/', ShirtView.as_view(), name='ShirtView'),
-        path('Pants/', PantsView.as_view(), name='PantsView'),
-        
-
+        path('padmin/', ProductListCreateAdmin.as_view(), name='ProductAdmin'),
+        path('padmin/create/', ProductListCreateAdmin.as_view(), name='CreateProductAdmin'),
+        path('padmin/<int:id>/', ProductDetailAdmin.as_view(), name='EditProductAdmin'),
+        path('padmin/search/', ProductSearchAdmin.as_view(), name='product-search-admin'),
+        path('padmin/category/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
+        path('padmin/category/create/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
+        path('padmin/category/<int:id>/', CategoryDetailAdmin.as_view(), name='CreateCategoryAdmin'),
+        path('basket/', BasketView.as_view(), name='basket'),
+        path('basket/<int:product_id>/', BasketView.as_view(), name='basket-detail'),
+        path('shoes/', Shoeview.as_view(), name='ShoeView'),
+        path('shirts/', ShirtView.as_view(), name='ShirtView'),
+        path('pants/', PantsView.as_view(), name='PantsView'),
 
 ]

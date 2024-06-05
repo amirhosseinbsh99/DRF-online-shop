@@ -1,5 +1,7 @@
 from django.db import models
 from django.utils.text import slugify
+from django.core.validators import MinValueValidator, MaxValueValidator
+from accounts.models import Customer
 import unidecode
 
 class Category(models.Model):
@@ -28,8 +30,11 @@ class Product(models.Model):
     available = models.BooleanField(default=True)
     price = models.IntegerField()
     stock = models.PositiveIntegerField()
-    color = models.CharField(max_length=30)
-    star_rating = models.IntegerField()
+    color = models.JSONField(null=True, blank=True)  # e.g., ["Red", "Green", "Blue"]
+    star_rating = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(5)]
+    )
     size = models.CharField(max_length=10)
     material = models.CharField(max_length=30, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -38,4 +43,11 @@ class Product(models.Model):
     def __str__(self):
         return f"{self.name} - {self.available} - {self.price}"
     
+class Basket(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    items = models.ManyToManyField(Product, through='BasketItem')
 
+class BasketItem(models.Model):
+    basket = models.ForeignKey(Basket, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
