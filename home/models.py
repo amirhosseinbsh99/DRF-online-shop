@@ -51,10 +51,17 @@ class ProductImage(models.Model):
         return f"Image for {self.product.name}"
 
 class Basket(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    items = models.ManyToManyField(Product, through='BasketItem')
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='baskets')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Basket {self.id} for {self.customer.username}"
 
 class BasketItem(models.Model):
-    basket = models.ForeignKey(Basket, on_delete=models.CASCADE)
+    basket = models.ForeignKey(Basket, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField()
+    quantity = models.PositiveIntegerField(default=1)
+
+    def __str__(self):
+        return f"{self.quantity} of {self.product.name} in basket {self.basket.id}"

@@ -3,12 +3,13 @@ from rest_framework.views import APIView
 from rest_framework import status,viewsets
 from rest_framework.generics import ListAPIView
 from .models import Product,Category,Basket, BasketItem
-from .serializers import ProductSerializer,CategorySerializer,BasketSerializer
+from .serializers import ProductSerializer,CategorySerializer,BasketItemSerializer,BasketSerializer
 from rest_framework import filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from accounts.views import IsAdminUser
 from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
@@ -63,7 +64,13 @@ class ProductListAdmin(APIView):
 class ProductListCreateAdmin(APIView):
 
     # permission_classes = [IsAdminUser]
-
+    def post(self, request):
+        serializer = ProductSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
     def get(self, request):
         # Filter products by created_at field and limit to 15 latest items
         products = Product.objects.order_by('-created_at')[:15]
@@ -71,7 +78,7 @@ class ProductListCreateAdmin(APIView):
         return Response(serializer.data)
 
     
-
+    
         
 class ProductDetailAdmin(APIView):
 
@@ -191,29 +198,36 @@ class PantsView(APIView):
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
 
-class BasketView(APIView):
+class BasketListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        basket, created = Basket.objects.get_or_create(user=request.user)
-        serializer = BasketSerializer(basket)
+        baskets = Basket.objects.filter(customer=request.user)
+        serializer = BasketSerializer(baskets, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        basket, created = Basket.objects.get_or_create(user=request.user)
-        product_id = request.data.get('id')
-        quantity = request.data.get('quantity', 1)
-        product = get_object_or_404(Product, id=product_id)
-        basket_item, created = BasketItem.objects.get_or_create(basket=basket, product=product)
-        basket_item.quantity += int(quantity)
-        basket_item.save()
-        serializer = BasketSerializer(basket)
-        return Response(serializer.data)
+        basket, created = Basket.objects.get_or_create(customer=request.user)
+        return Response(BasketSerializer(basket).data, status=status.HTTP_201_CREATED)
 
-    def delete(self, request, product_id):
-        basket, created = Basket.objects.get_or_create(user=request.user)
-        product = get_object_or_404(Product, id=product_id)
-        basket_item = get_object_or_404(BasketItem, basket=basket, product=product)
-        basket_item.delete()
-        serializer = BasketSerializer(basket)
-        return Response(serializer.data)
+class BasketItemCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, basket_id):
+        basket = Basket.objects.get(id=basket_id, customer=request.user)
+        product_id = request.data.get('product_id')
+        quantity = request.data.get('quantity', 1)
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        basket_item, created = BasketItem.objects.get_or_create(basket=basket, product=product)
+        if not created:
+            basket_item.quantity += quantity
+            basket_item.save()
+
+        serializer = BasketItemSerializer(basket_item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
         
