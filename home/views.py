@@ -1,15 +1,19 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import status
+from rest_framework import status,viewsets
 from rest_framework.generics import ListAPIView
 from .models import Product,Category,Basket, BasketItem
-from .serializers import ProductSerializer,CategorySerializer
+from .serializers import ProductSerializer,CategorySerializer,BasketSerializer
 from rest_framework import filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from accounts.views import IsAdminUser
+from django.shortcuts import get_object_or_404
 
-
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    lookup_field = 'slug'  # Use slug for lookups
 
 class HomeView(ListAPIView):
     queryset = Product.objects.filter(available=True)
@@ -21,7 +25,6 @@ class HomeView(ListAPIView):
         for product in zero_stock_products:
             product.Available = False
             product.save()
-        
         # Return queryset excluding products with zero stock
         return Product.objects.filter(available=True).order_by('-created_at')
     
@@ -48,22 +51,25 @@ class ProductSearchView(ListAPIView):
     search_fields = ['name', 'category__title', 'price', 'size', 'color']
     filterset_class = ProductFilter  # Use the filter set here
 
-class ProductListCreateAdmin(APIView):
+class ProductListAdmin(APIView):
 
     # permission_classes = [IsAdminUser]
 
-    def post(self, request):
-        serializer = ProductSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
     def get(self, request):
         products = Product.objects.all()
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
     
-    
+class ProductListCreateAdmin(APIView):
+
+    # permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        # Filter products by created_at field and limit to 15 latest items
+        products = Product.objects.order_by('-created_at')[:15]
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data)
+
     
 
         
@@ -162,7 +168,7 @@ class CategoryDetailAdmin(APIView):
             return Response({"error": "دسته بندی یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
         
         category.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)    
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class Shoeview(APIView):
 
@@ -193,7 +199,7 @@ class BasketView(APIView):
 
     def post(self, request):
         basket, created = Basket.objects.get_or_create(user=request.user)
-        product_id = request.data.get('product_id')
+        product_id = request.data.get('id')
         quantity = request.data.get('quantity', 1)
         product = get_object_or_404(Product, id=product_id)
         basket_item, created = BasketItem.objects.get_or_create(basket=basket, product=product)

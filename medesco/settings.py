@@ -20,6 +20,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -31,7 +32,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
     'unidecode',
-    
+    'django_resized',
+    'corsheaders',
+
 ]
 
 MIDDLEWARE = [
@@ -42,6 +45,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+
 ]
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
@@ -137,3 +142,8 @@ AUTHENTICATION_BACKENDS = [
     'accounts.auth_backend.PhoneNumberBackend',
     'django.contrib.auth.backends.ModelBackend',  # Keep the default backend
 ]
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    # Add other origins here
+]
+CORS_ALLOW_CREDENTIALS = True

@@ -8,7 +8,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug')
+    list_display = ('id','title')
 
 
 @admin.register(Product)

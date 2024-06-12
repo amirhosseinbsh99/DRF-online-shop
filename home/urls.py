@@ -1,17 +1,21 @@
-from django.urls import path
-from .views import HomeView,ProductListCreateAdmin,BasketView,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,Shoeview,ShirtView,PantsView,ProductDetailAdmin
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+
+from .views import HomeView,ProductListCreateAdmin,ProductViewSet,BasketView,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,Shoeview,ShirtView,PantsView,ProductDetailAdmin
 
 
 app_name = 'home'
 
-
+# Configure the router
+router = DefaultRouter()
+router.register(r'products', ProductViewSet)
 urlpatterns = [
 
         path('', HomeView.as_view(), name='ProductView'),
         path('Search/', ProductSearchView.as_view(), name='ProductSearchView'),
         path('padmin/', ProductListCreateAdmin.as_view(), name='ProductAdmin'),
-        path('padmin/create/', ProductListCreateAdmin.as_view(), name='CreateProductAdmin'),
-        path('padmin/<int:id>/', ProductDetailAdmin.as_view(), name='EditProductAdmin'),
+        path('padmin/product/create/', ProductListCreateAdmin.as_view(), name='CreateProductAdmin'),
+        path('padmin/product/<int:id>/', ProductDetailAdmin.as_view(), name='EditProductAdmin'),
         path('padmin/search/', ProductSearchAdmin.as_view(), name='product-search-admin'),
         path('padmin/category/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
         path('padmin/category/create/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
@@ -21,5 +25,5 @@ urlpatterns = [
         path('shoes/', Shoeview.as_view(), name='ShoeView'),
         path('shirts/', ShirtView.as_view(), name='ShirtView'),
         path('pants/', PantsView.as_view(), name='PantsView'),
-
+        path('', include(router.urls)),
 ]

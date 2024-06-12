@@ -1,14 +1,20 @@
 from rest_framework import serializers
-from home.models import Product,Category,Basket, BasketItem
+from django.core.exceptions import ValidationError
+import re
+from home.models import Product,Category,Basket, BasketItem,ProductImage
 
 class ProductSerializer(serializers.ModelSerializer):
-    
+
+    def validate_slug(self, value):
+        if not re.match(r'^[\w-]+$', value, re.UNICODE):
+            raise serializers.ValidationError('Enter a valid “slug” consisting of letters, numbers, underscores, or hyphens.')
+        return value
     class Meta:
         model = Product
         fields = [
             'id', 'category', 'name', 'brand', 'description', 'model_number',
             'image', 'available', 'price', 'stock', 'color', 'star_rating',
-            'size', 'material', 'created_at', 'updated_at'
+            'size', 'material', 'created_at', 'updated_at','slug'
         ]
 
     def validate_star_rating(self, value):
@@ -44,3 +50,8 @@ class BasketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Basket
         fields = ('items',)
+
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'image']
