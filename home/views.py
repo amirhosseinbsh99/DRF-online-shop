@@ -2,8 +2,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status,viewsets
 from rest_framework.generics import ListAPIView
-from .models import Product,Category,Basket, BasketItem
-from .serializers import ProductSerializer,CategorySerializer,BasketItemSerializer,BasketSerializer
+from .models import Product,Category
+from .serializers import ProductSerializer,CategorySerializer
 from rest_framework import filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
@@ -198,36 +198,6 @@ class PantsView(APIView):
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
 
-class BasketListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        baskets = Basket.objects.filter(customer=request.user)
-        serializer = BasketSerializer(baskets, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        basket, created = Basket.objects.get_or_create(customer=request.user)
-        return Response(BasketSerializer(basket).data, status=status.HTTP_201_CREATED)
-
-class BasketItemCreateView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, basket_id):
-        basket = Basket.objects.get(id=basket_id, customer=request.user)
-        product_id = request.data.get('product_id')
-        quantity = request.data.get('quantity', 1)
-        try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        basket_item, created = BasketItem.objects.get_or_create(basket=basket, product=product)
-        if not created:
-            basket_item.quantity += quantity
-            basket_item.save()
-
-        serializer = BasketItemSerializer(basket_item)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
         

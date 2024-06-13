@@ -48,17 +48,5 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = "__all__"
 
-class BasketItemSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
 
-    class Meta:
-        model = BasketItem
-        fields = ['id', 'product', 'quantity']
-
-class BasketSerializer(serializers.ModelSerializer):
-    items = BasketItemSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Basket
-        fields = ['id', 'customer', 'items', 'created_at', 'updated_at']
 

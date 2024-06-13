@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import HomeView,ProductListCreateAdmin,ProductViewSet,BasketListCreateView,BasketItemCreateView,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,Shoeview,ShirtView,PantsView,ProductDetailAdmin
+from .views import HomeView,ProductListCreateAdmin,ProductViewSet,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,Shoeview,ShirtView,PantsView,ProductDetailAdmin
 
 
 app_name = 'home'
@@ -20,8 +20,7 @@ urlpatterns = [
         path('padmin/category/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
         path('padmin/category/create/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
         path('padmin/category/<int:id>/', CategoryDetailAdmin.as_view(), name='CreateCategoryAdmin'),
-        path('baskets/', BasketListCreateView.as_view(), name='basket-list-create'),
-        path('baskets/<int:basket_id>/items/', BasketItemCreateView.as_view(), name='basket-item-create'),
+        
         path('shoes/', Shoeview.as_view(), name='ShoeView'),
         path('shirts/', ShirtView.as_view(), name='ShirtView'),
         path('pants/', PantsView.as_view(), name='PantsView'),
