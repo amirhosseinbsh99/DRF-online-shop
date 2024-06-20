@@ -8,7 +8,13 @@ from rest_framework.permissions import IsAuthenticated,BasePermission,AllowAny
 from .serializers import CustomerSerializer,CustomerLoginSerializer,DashboardViewSerializer,BasketSerializer,BasketItemSerializer
 from .models import Customer
 from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view, permission_classes
 
+from django.conf import settings
+from django.http import JsonResponse, HttpResponseRedirect
+import requests
+import json
+from django.urls import reverse
 class SignUpView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = CustomerSerializer(data=request.data)
@@ -150,3 +156,119 @@ class BasketItemCreateView(APIView):
 
         serializer = BasketItemSerializer(basket_item)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+
+
+
+@permission_classes([IsAuthenticated])
+def send_request(request, basket_id):
+    customer = request.user
+
+    # Fetch the specific basket for the given basket ID
+    try:
+        basket = Basket.objects.get(id=basket_id, customer=customer)
+    except Basket.DoesNotExist:
+        return JsonResponse({'status': False, 'code': 'Basket not found'})
+
+    # Calculate the total amount for all items in the basket
+    basket_items = BasketItem.objects.filter(basket=basket)
+    if not basket_items.exists():
+        return JsonResponse({'status': False, 'code': 'Basket is empty'})
+
+    total_amount = sum(item.product.price * item.quantity for item in basket_items)
+
+    description = f"Purchase of {basket_items.count()} items"
+    mobile = customer.phone_number
+
+    callback_url = request.build_absolute_uri(reverse('account:verify', kwargs={'basket_id': basket_id}))
+
+    data = {
+        "MerchantID": settings.ZARINPAL_MERCHANT_ID,
+        "Amount": total_amount,  # Rial / Required
+        "Description": description,
+        "Phone": mobile,
+        "CallbackURL": callback_url,
+    }
+    data = json.dumps(data)
+    headers = {'content-type': 'application/json', 'content-length': str(len(data))}
+
+    try:
+        response = requests.post(settings.ZP_API_REQUEST, data=data, headers=headers, timeout=10)
+        response.raise_for_status()
+        response_data = response.json()
+
+        if response_data['Status'] == 100:
+            return HttpResponseRedirect(settings.ZP_API_STARTPAY + str(response_data['Authority']))
+        else:
+            return JsonResponse({'status': False, 'code': str(response_data['Status'])})
+    except requests.exceptions.Timeout:
+        return JsonResponse({'status': False, 'code': 'timeout'})
+    except requests.exceptions.ConnectionError:
+        return JsonResponse({'status': False, 'code': 'connection error'})
+    except requests.exceptions.HTTPError as http_err:
+        return JsonResponse({'status': False, 'code': f'HTTP error occurred: {http_err}'})
+    except Exception as err:
+        return JsonResponse({'status': False, 'code': f'An error occurred: {err}'})
+
+def verify(request, basket_id):
+    authority = request.GET.get('Authority', '')
+    
+    # Fetch the specific basket for the given basket ID
+    customer = request.user
+    try:
+        basket = Basket.objects.get(id=basket_id, customer=customer)
+    except Basket.DoesNotExist:
+        return JsonResponse({'status': False, 'code': 'Basket not found'})
+
+    # Calculate the total amount for all items in the basket
+    basket_items = BasketItem.objects.filter(basket=basket)
+    if not basket_items.exists():
+        return JsonResponse({'status': False, 'code': 'Basket is empty'})
+
+    total_amount = sum(item.product.price * item.quantity for item in basket_items)
+
+    data = {
+        "MerchantID": settings.ZARINPAL_MERCHANT_ID,
+        "Amount": total_amount,  # Rial / Required
+        "Authority": authority,
+    }
+    data = json.dumps(data)
+    headers = {'content-type': 'application/json', 'content-length': str(len(data))}
+
+    try:
+        response = requests.post(settings.ZP_API_VERIFY, data=data, headers=headers)
+        response.raise_for_status()
+        response_data = response.json()
+
+        if response_data['Status'] == 100:
+            # Payment was successful
+            ref_id = response_data['RefID']
+            
+            # Update stock quantity and clear the basket
+            for item in basket_items:
+                product = item.product
+                if product.stock >= item.quantity:
+                    product.stock -= item.quantity
+                    product.save()
+                else:
+                    return JsonResponse({'status': False, 'code': 'Insufficient stock for one or more products'})
+            
+            # Optionally clear the basket after successful purchase
+            basket_items.delete()
+
+            return JsonResponse({'status': True, 'RefID': ref_id})
+        else:
+            return JsonResponse({'status': False, 'code': str(response_data['Status'])})
+    except requests.exceptions.Timeout:
+        return JsonResponse({'status': False, 'code': 'timeout'})
+    except requests.exceptions.ConnectionError:
+        return JsonResponse({'status': False, 'code': 'connection error'})
+    except requests.exceptions.HTTPError as http_err:
+        return JsonResponse({'status': False, 'code': f'HTTP error occurred: {http_err}'})
+    except Exception as err:
+        return JsonResponse({'status': False, 'code': f'An error occurred: {err}'})
+
+
+

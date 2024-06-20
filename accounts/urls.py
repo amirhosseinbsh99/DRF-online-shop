@@ -1,6 +1,6 @@
 from django.urls import path
 from accounts.views import SignUpView,LogoutView,BasketListCreateView,BasketItemCreateView,LoginView,DashboardView
-
+from accounts import views
 app_name = 'account'
 
 urlpatterns = [
@@ -10,4 +10,7 @@ urlpatterns = [
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
     path('basket/', BasketListCreateView.as_view(), name='basket-list-create'),
     path('basket/<int:basket_id>/items/', BasketItemCreateView.as_view(), name='basket-item-create'),
+    
+    path('basket/<int:basket_id>/request/', views.send_request, name='request'),
+    path('basket/<int:basket_id>/verify/', views.verify, name='verify'),
 ]   

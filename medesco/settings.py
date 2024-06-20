@@ -34,8 +34,21 @@ INSTALLED_APPS = [
     'unidecode',
     'django_resized',
     'corsheaders',
+    'zeep',
 
 ]
+ZARINPAL_SANDBOX = True
+ZARINPAL_MERCHANT_ID = '15480d82-6f8f-43d8-8366-3935a0dc294c'  # Replace with your actual merchant ID
+ZARINPAL_CALLBACK_URL = 'http://127.0.0.1:8000/accounts/basket/<int:basket_id>/verify/'  # Replace with your actual callback URL
+
+if ZARINPAL_SANDBOX:
+    sandbox = 'sandbox'
+else:
+    sandbox = 'www'
+
+ZP_API_REQUEST = f"https://{sandbox}.zarinpal.com/pg/rest/WebGate/PaymentRequest.json"
+ZP_API_VERIFY = f"https://{sandbox}.zarinpal.com/pg/rest/WebGate/PaymentVerification.json"
+ZP_API_STARTPAY = f"https://{sandbox}.zarinpal.com/pg/StartPay/"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
