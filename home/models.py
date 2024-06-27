@@ -25,15 +25,21 @@ class Product(models.Model):
     price = models.IntegerField()
     stock = models.PositiveIntegerField()
     color = models.CharField(max_length=50, null=True, blank=True)
-    star_rating = models.IntegerField(
-        default=0,
-        validators=[MinValueValidator(0), MaxValueValidator(5)]
-    )
     size = models.CharField(max_length=10, null=True, blank=True)
     material = models.CharField(max_length=30, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     slug = models.SlugField(unique=True, max_length=200, blank=True, allow_unicode=True)
+
+    total_rating = models.IntegerField(default=0)
+    number_of_ratings = models.IntegerField(default=0)
+    star_rating = models.FloatField(default=0, validators=[MinValueValidator(0), MaxValueValidator(5)])
+
+    @property
+    def average_rating(self):
+        if self.number_of_ratings == 0:
+            return 0.0
+        return self.total_rating / self.number_of_ratings
 
     def __str__(self):
         return self.name
@@ -61,6 +67,7 @@ class BasketItem(models.Model):
     basket = models.ForeignKey(Basket, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
+    peyment = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.quantity} of {self.product.name} in basket {self.basket.id}"

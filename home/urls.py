@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import HomeView,ProductListCreateAdmin,ProductViewSet,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,Shoeview,ShirtView,PantsView,ProductDetailAdmin
+from .views import HomeView,ProductListCreateAdmin,ProductViewSet,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,Shoeview,ShirtView,PantsView,ProductDetailAdmin,RateProductView
 
 
 app_name = 'home'
@@ -24,5 +24,8 @@ urlpatterns = [
         path('shoes/', Shoeview.as_view(), name='ShoeView'),
         path('shirts/', ShirtView.as_view(), name='ShirtView'),
         path('pants/', PantsView.as_view(), name='PantsView'),
+        path('products/<slug:product_slug>/rate/', RateProductView.as_view(), name='rate-product'),
+
         path('', include(router.urls)),
+
 ]

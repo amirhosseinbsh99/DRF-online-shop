@@ -10,6 +10,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
+    average_rating = serializers.ReadOnlyField()
 
     def validate_slug(self, value):
         if not re.match(r'^[\w-]+$', value, re.UNICODE):
@@ -31,7 +32,8 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'category', 'name', 'brand', 'description', 'model_number',
             'available', 'price', 'stock', 'color', 'star_rating',
-            'size', 'material', 'created_at', 'updated_at', 'slug', 'images'
+            'size', 'material', 'created_at', 'updated_at', 'slug', 'images',
+            'average_rating'
         ]
 
     def create(self, validated_data):
@@ -40,7 +42,7 @@ class ProductSerializer(serializers.ModelSerializer):
         product = Product.objects.create(**validated_data)
         for image_data in images_data:
             ProductImage.objects.create(product=product, image=image_data)
-        return product
+        return product 
     
 class CategorySerializer(serializers.ModelSerializer):
     

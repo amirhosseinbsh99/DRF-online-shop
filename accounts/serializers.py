@@ -39,11 +39,25 @@ class BasketItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BasketItem
-        fields = ['id', 'product', 'quantity']
+        fields = ['id', 'product', 'quantity', 'peyment']
+
+class BasketItemSerializer(serializers.ModelSerializer):
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+
+    class Meta:
+        model = BasketItem
+        fields = ['id', 'product', 'quantity', 'peyment']
 
 class BasketSerializer(serializers.ModelSerializer):
-    items = BasketItemSerializer(many=True, read_only=True)
+    items = serializers.SerializerMethodField()
 
     class Meta:
         model = Basket
         fields = ['id', 'customer', 'items']
+
+    def get_items(self, obj):
+        peyment_status = self.context.get('peyment', None)
+        items = obj.items.all()
+        if peyment_status is not None:
+            items = items.filter(peyment=peyment_status)
+        return BasketItemSerializer(items, many=True).data

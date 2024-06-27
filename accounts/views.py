@@ -102,24 +102,28 @@ class BasketListCreateView(APIView):
 
     def get(self, request):
         baskets = Basket.objects.filter(customer=request.user)
-        serializer = BasketSerializer(baskets, many=True)
+        serializer = BasketSerializer(baskets, many=True, context={'peyment': False})
         return Response(serializer.data)
 
     def post(self, request):
         basket, created = Basket.objects.get_or_create(customer=request.user)
         return Response(BasketSerializer(basket).data, status=status.HTTP_201_CREATED)
-    
 
 class BasketItemCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request,basket_id):
-        baskets = Basket.objects.filter(customer=request.user)
-        serializer = BasketSerializer(baskets, many=True)
+    def get(self, request, basket_id):
+        basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
+        
+        # Filter BasketItems with peyment=False
+        basket_items = BasketItem.objects.filter(basket=basket, peyment=False)
+        
+        # Serialize basket and its items together
+        serializer = BasketSerializer(basket, context={'peyment': False})
         return Response(serializer.data)
     
     def post(self, request, basket_id):
-        basket = Basket.objects.get(id=basket_id, customer=request.user)
+        basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
         product_id = request.data.get('product_id')
         quantity = request.data.get('quantity', 1)
         try:
@@ -134,8 +138,9 @@ class BasketItemCreateView(APIView):
 
         serializer = BasketItemSerializer(basket_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    def put(self, request):
-        basket, created = Basket.objects.get_or_create(customer=request.user)
+    
+    def put(self, request, basket_id):
+        basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
         product_id = request.data.get('product_id')
         quantity = request.data.get('quantity')
 
@@ -162,113 +167,123 @@ class BasketItemCreateView(APIView):
 
 
 
-@permission_classes([IsAuthenticated])
-def send_request(request, basket_id):
-    customer = request.user
 
-    # Fetch the specific basket for the given basket ID
-    try:
-        basket = Basket.objects.get(id=basket_id, customer=customer)
-    except Basket.DoesNotExist:
-        return JsonResponse({'status': False, 'code': 'Basket not found'})
+class PaymentRequestView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    # Calculate the total amount for all items in the basket
-    basket_items = BasketItem.objects.filter(basket=basket)
-    if not basket_items.exists():
-        return JsonResponse({'status': False, 'code': 'Basket is empty'})
+    def get(self, request, basket_id):
+        customer = request.user
+        basket = get_object_or_404(Basket, id=basket_id, customer=customer)
 
-    total_amount = sum(item.product.price * item.quantity for item in basket_items)
-
-    description = f"Purchase of {basket_items.count()} items"
-    mobile = customer.phone_number
-
-    callback_url = request.build_absolute_uri(reverse('account:verify', kwargs={'basket_id': basket_id}))
-
-    data = {
-        "MerchantID": settings.ZARINPAL_MERCHANT_ID,
-        "Amount": total_amount,  # Rial / Required
-        "Description": description,
-        "Phone": mobile,
-        "CallbackURL": callback_url,
-    }
-    data = json.dumps(data)
-    headers = {'content-type': 'application/json', 'content-length': str(len(data))}
-
-    try:
-        response = requests.post(settings.ZP_API_REQUEST, data=data, headers=headers, timeout=10)
-        response.raise_for_status()
-        response_data = response.json()
-
-        if response_data['Status'] == 100:
-            return HttpResponseRedirect(settings.ZP_API_STARTPAY + str(response_data['Authority']))
-        else:
-            return JsonResponse({'status': False, 'code': str(response_data['Status'])})
-    except requests.exceptions.Timeout:
-        return JsonResponse({'status': False, 'code': 'timeout'})
-    except requests.exceptions.ConnectionError:
-        return JsonResponse({'status': False, 'code': 'connection error'})
-    except requests.exceptions.HTTPError as http_err:
-        return JsonResponse({'status': False, 'code': f'HTTP error occurred: {http_err}'})
-    except Exception as err:
-        return JsonResponse({'status': False, 'code': f'An error occurred: {err}'})
-
-def verify(request, basket_id):
-    authority = request.GET.get('Authority', '')
-    
-    # Fetch the specific basket for the given basket ID
-    customer = request.user
-    try:
-        basket = Basket.objects.get(id=basket_id, customer=customer)
-    except Basket.DoesNotExist:
-        return JsonResponse({'status': False, 'code': 'Basket not found'})
-
-    # Calculate the total amount for all items in the basket
-    basket_items = BasketItem.objects.filter(basket=basket)
-    if not basket_items.exists():
-        return JsonResponse({'status': False, 'code': 'Basket is empty'})
-
-    total_amount = sum(item.product.price * item.quantity for item in basket_items)
-
-    data = {
-        "MerchantID": settings.ZARINPAL_MERCHANT_ID,
-        "Amount": total_amount,  # Rial / Required
-        "Authority": authority,
-    }
-    data = json.dumps(data)
-    headers = {'content-type': 'application/json', 'content-length': str(len(data))}
-
-    try:
-        response = requests.post(settings.ZP_API_VERIFY, data=data, headers=headers)
-        response.raise_for_status()
-        response_data = response.json()
-
-        if response_data['Status'] == 100:
-            # Payment was successful
-            ref_id = response_data['RefID']
+        # Calculate the total amount for all items in the basket
+        basket_items = BasketItem.objects.filter(basket=basket, peyment = False)
+        
+        if not basket_items.exists():
+            return Response({'error': 'Basket is empty'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        for item in basket_items:
+            if item.product.stock < item.quantity:
+                return Response({'error': f'Insufficient stock for product {item.product.name}'}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Update stock quantity and clear the basket
-            for item in basket_items:
-                product = item.product
-                if product.stock >= item.quantity:
-                    product.stock -= item.quantity
-                    product.save()
-                else:
-                    return JsonResponse({'status': False, 'code': 'Insufficient stock for one or more products'})
-            
-            # Optionally clear the basket after successful purchase
-            basket_items.delete()
+        total_amount = sum(item.product.price * item.quantity for item in basket_items)
 
-            return JsonResponse({'status': True, 'RefID': ref_id})
-        else:
-            return JsonResponse({'status': False, 'code': str(response_data['Status'])})
-    except requests.exceptions.Timeout:
-        return JsonResponse({'status': False, 'code': 'timeout'})
-    except requests.exceptions.ConnectionError:
-        return JsonResponse({'status': False, 'code': 'connection error'})
-    except requests.exceptions.HTTPError as http_err:
-        return JsonResponse({'status': False, 'code': f'HTTP error occurred: {http_err}'})
-    except Exception as err:
-        return JsonResponse({'status': False, 'code': f'An error occurred: {err}'})
+        data = {
+            "MerchantID": settings.ZARINPAL_MERCHANT_ID,
+            "Amount": total_amount,  # Rial / Required
+            "CallbackURL": settings.ZARINPAL_CALLBACK_URL.format(basket_id=basket.id),
+            "Description": "Payment for items in basket",
+        }
+        data = json.dumps(data)
+        headers = {'content-type': 'application/json', 'content-length': str(len(data))}
+
+        try:
+            response = requests.post(settings.ZP_API_PAYMENT_REQUEST, data=data, headers=headers)
+            response.raise_for_status()
+            response_data = response.json()
+
+            if response_data['Status'] == 100:
+                # Payment link is generated successfully
+                payment_url = settings.ZP_PAYMENT_GATEWAY_URL + response_data['Authority']
+                return Response({'payment_url': payment_url})
+            else:
+                return Response({'error': 'Failed to generate payment link'}, status=status.HTTP_400_BAD_REQUEST)
+        except requests.exceptions.Timeout:
+            return Response({'error': 'Request timeout'}, status=status.HTTP_504_GATEWAY_TIMEOUT)
+        except requests.exceptions.ConnectionError:
+            return Response({'error': 'Connection error'}, status=status.HTTP_502_BAD_GATEWAY)
+        except requests.exceptions.HTTPError as http_err:
+            return Response({'error': f'HTTP error occurred: {http_err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as err:
+            return Response({'error': f'An error occurred: {err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class PaymentVerifyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, basket_id):
+        authority = request.GET.get('Authority', '')
+        customer = request.user
+        basket = get_object_or_404(Basket, id=basket_id, customer=customer)
+
+        # Calculate the total amount for all items in the basket
+        basket_items = BasketItem.objects.filter(basket=basket)
+        if not basket_items.exists():
+            return Response({'status': False, 'code': 'Basket is empty'}, status=status.HTTP_400_BAD_REQUEST)
+
+        total_amount = sum(item.product.price * item.quantity for item in basket_items)
+
+        data = {
+            "MerchantID": settings.ZARINPAL_MERCHANT_ID,
+            "Amount": total_amount,  # Rial / Required
+            "Authority": authority,
+        }
+        data = json.dumps(data)
+        headers = {'content-type': 'application/json', 'content-length': str(len(data))}
+
+        try:
+            response = requests.post(settings.ZP_API_VERIFY, data=data, headers=headers)
+            response.raise_for_status()
+            response_data = response.json()
+
+            if response_data['Status'] == 100:
+                # Payment was successful
+                ref_id = response_data['RefID']
+                
+                # Update stock quantity and clear the basket
+                for item in basket_items:
+                    product = item.product
+                    if product.stock >= item.quantity:
+                        product.stock -= item.quantity
+                        item.peyment = True
+                        product.save()
+                        item.save()
+                    else:
+                        return Response({'status': False, 'code': 'Insufficient stock for one or more products'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Optionally clear the basket after successful purchase
+                
+
+                return Response({'status': True, 'RefID': ref_id}, status=status.HTTP_200_OK)
+            else:
+                return Response({'status': False, 'code': str(response_data['Status'])}, status=status.HTTP_400_BAD_REQUEST)
+        except requests.exceptions.Timeout:
+            return Response({'status': False, 'code': 'timeout'}, status=status.HTTP_504_GATEWAY_TIMEOUT)
+        except requests.exceptions.ConnectionError:
+            return Response({'status': False, 'code': 'connection error'}, status=status.HTTP_502_BAD_GATEWAY)
+        except requests.exceptions.HTTPError as http_err:
+            return Response({'status': False, 'code': f'HTTP error occurred: {http_err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as err:
+            return Response({'status': False, 'code': f'An error occurred: {err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class OrderHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request, basket_id):
+        basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
+        
+        # Filter BasketItems with peyment=False
+        basket_items = BasketItem.objects.filter(basket=basket, peyment=True)
+        
+        # Serialize basket and its items together
+        serializer = BasketSerializer(basket, context={'peyment': True})
+        return Response(serializer.data)

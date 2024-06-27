@@ -198,6 +198,29 @@ class PantsView(APIView):
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
 
-
+class RateProductView(APIView):
     
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, product_slug):
+        product = get_object_or_404(Product, slug=product_slug)
+        rating = request.data.get('rating')
+
+        if rating is None:
+            return Response({"error": "Rating is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            rating = int(rating)
+            if rating < 1 or rating > 5:
+                return Response({"error": "Rating must be between 1 and 5"}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            return Response({"error": "Invalid rating value"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update the product's total rating and number of ratings
+        product.total_rating += rating
+        product.number_of_ratings += 1
+        product.star_rating = product.average_rating  # Use the property method to get the value
+        product.save()
+
+        return Response({"average_rating": product.star_rating}, status=status.HTTP_200_OK)
         
