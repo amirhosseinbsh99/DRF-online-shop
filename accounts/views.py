@@ -25,7 +25,6 @@ class SignUpView(APIView):
             return Response({"message": "ثبت نام با موفقیت انجام شد"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
@@ -175,7 +174,6 @@ class PaymentRequestView(APIView):
         customer = request.user
         basket = get_object_or_404(Basket, id=basket_id, customer=customer)
 
-        # Calculate the total amount for all items in the basket
         basket_items = BasketItem.objects.filter(basket=basket, peyment = False)
         
         if not basket_items.exists():
@@ -189,7 +187,7 @@ class PaymentRequestView(APIView):
 
         data = {
             "MerchantID": settings.ZARINPAL_MERCHANT_ID,
-            "Amount": total_amount,  # Rial / Required
+            "Amount": total_amount,  
             "CallbackURL": settings.ZARINPAL_CALLBACK_URL.format(basket_id=basket.id),
             "Description": "Payment for items in basket",
         }
@@ -202,7 +200,6 @@ class PaymentRequestView(APIView):
             response_data = response.json()
 
             if response_data['Status'] == 100:
-                # Payment link is generated successfully
                 payment_url = settings.ZP_PAYMENT_GATEWAY_URL + response_data['Authority']
                 return Response({'payment_url': payment_url})
             else:

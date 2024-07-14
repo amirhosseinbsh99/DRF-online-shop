@@ -1,14 +1,18 @@
 from django.contrib import admin
-from .models import Category, Product,Basket, BasketItem
+from .models import Category, Product,Basket, BasketItem,Color
 from accounts.models import Customer
 
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('username', 'phone_number')
 
+@admin.register(Color)
+class ColorAdmin(admin.ModelAdmin):
+    list_display = ['name']
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('id','title')
+    list_display = ('title', 'parent')
+    search_fields = ('title',)
 
 
 @admin.register(Product)
@@ -17,6 +21,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ('available', 'category')
     search_fields = ('name',)
 
+    
 class BasketItemInline(admin.TabularInline):
     model = BasketItem
     extra = 0  # Do not display extra empty forms

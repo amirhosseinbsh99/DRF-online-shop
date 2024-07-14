@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,7 +19,6 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -35,8 +33,10 @@ INSTALLED_APPS = [
     'django_resized',
     'corsheaders',
     'zeep',
+    'django_select2',
 
 ]
+
 # ZARINPAL_SANDBOX = True
 # if ZARINPAL_SANDBOX:
 #     sandbox = 'sandbox'
@@ -165,6 +165,9 @@ AUTHENTICATION_BACKENDS = [
 ]
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
+    'https://zworks.ir'
+
+
     # Add other origins here
 ]
 CORS_ALLOW_CREDENTIALS = True

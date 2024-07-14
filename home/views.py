@@ -1,9 +1,9 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import status,viewsets
+from rest_framework import status,viewsets,pagination
 from rest_framework.generics import ListAPIView
-from .models import Product,Category
-from .serializers import ProductSerializer,CategorySerializer
+from .models import Product,Category,Color
+from .serializers import ProductSerializer,CategorySerializer,ColorSerializer
 from rest_framework import filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
@@ -11,10 +11,25 @@ from accounts.views import IsAdminUser
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 
+
+class ProductPagination(pagination.PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+    
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     lookup_field = 'slug'  # Use slug for lookups
+    pagination_class = ProductPagination
+
+class ProductsByCategory(APIView):
+    def get(self, request, category_id):
+        products = Product.objects.filter(category_id=category_id)
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class HomeView(ListAPIView):
     queryset = Product.objects.filter(available=True)
@@ -28,11 +43,11 @@ class HomeView(ListAPIView):
             product.save()
         # Return queryset excluding products with zero stock
         return Product.objects.filter(available=True).order_by('-created_at')
-    
+
 
 class ProductFilter(filters.FilterSet):
     category = filters.ModelChoiceFilter(queryset=Category.objects.all())
-    price = filters.NumberFilter()
+    price = filters.RangeFilter()
     size = filters.ChoiceFilter(choices=lambda: [(size, size) for size in Product.objects.values_list('size', flat=True).distinct()])
     
     # Custom filter for colors
@@ -73,43 +88,35 @@ class ProductListCreateAdmin(APIView):
     
     def get(self, request):
         # Filter products by created_at field and limit to 15 latest items
-        products = Product.objects.order_by('-created_at')[:15]
+        products = Product.objects.order_by('-created_at')
         serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
-
-    
+        return Response(serializer.data)   
     
         
 class ProductDetailAdmin(APIView):
 
-    # permission_classes = [IsAdminUser]
+    def get_object(self, id):
+        return get_object_or_404(Product.objects.prefetch_related('colors'), id=id)
 
-    def get(self, request, id):
-        try:
-            product = Product.objects.get(id=id)
-            serializer = ProductSerializer(product)
+    def get(self, request, id): 
+        product = self.get_object(id)
+        serializer = ProductSerializer(product)
+        return Response(serializer.data)
+
+    def put(self, request, id, *args, **kwargs):  
+        partial = kwargs.pop('partial', False)
+        product = self.get_object(id)
+        serializer = ProductSerializer(product, data=request.data, partial=partial, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
             return Response(serializer.data)
-        except Product.DoesNotExist:
-            return Response({"error": "محصول یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def put(self, request, id):
-        try:
-            product = Product.objects.get(id=id)
-        except Product.DoesNotExist:
-            return Response({"error": "محصول یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = ProductSerializer(product, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def delete(self, request, id):
-        try:
-            product = Product.objects.get(id=id)
-            product.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Product.DoesNotExist:
-            return Response({"error": "محصول یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
+    def delete(self, request, id):  
+        product = self.get_object(id)
+        product.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+        
 
 
 class ProductSearchAdmin(APIView):
@@ -126,12 +133,13 @@ class ProductSearchAdmin(APIView):
             return Response({"error": "No search query provided"}, status=status.HTTP_400_BAD_REQUEST)
         
         #http://127.0.0.1:8000/padmin/search/?q=nike
-    
+
 class CategoryAdmin(APIView):
     # permission_classes = [IsAdminUser]
-
     def post(self, request):
-        request.data 
+        data = request.data
+        if Category.objects.filter(title=data.get('title')).exists():
+            return Response({'error': 'دسته بندی تکراری میباشد'}, status=status.HTTP_400_BAD_REQUEST)
         serializer = CategorySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -141,41 +149,82 @@ class CategoryAdmin(APIView):
         category = Category.objects.all().order_by('-created_date')
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
-    
-class CategoryDetailAdmin(APIView):
-    # permission_classes = [IsAdminUser]
 
-    def get_object(self, id):
-        try:
-            return Category.objects.get(id=id)
-        except Category.DoesNotExist:
-            return None
+
+class CategoryDetailAdmin(APIView):
+    permission_classes = [IsAdminUser]
 
     def get(self, request, id):
-        category = self.get_object(id)
-        if not category:
-            return Response({"error": "دسته بندی یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
-        
+        category = get_object_or_404(Category, id=id)
         serializer = CategorySerializer(category)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, id):
-        category = self.get_object(id)
-        if not category:
-            return Response({"error": "دسته بندی یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
-        
+        category = get_object_or_404(Category, id=id)
         serializer = CategorySerializer(category, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, id):
-        category = self.get_object(id)
-        if not category:
-            return Response({"error": "دسته بندی یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
-        
+        category = get_object_or_404(Category, id=id)
         category.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class ColorAdmin(APIView):
+    # permission_classes = [IsAdminUser]
+    def post(self, request):
+        data = request.data
+        if Color.objects.filter(name=data.get('name')).exists():
+            return Response({'error': 'رنگ تکراری میباشد'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ColorSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    def get(self, request):
+        color = Color.objects.all()
+        serializer = ColorSerializer(color, many=True)
+        return Response(serializer.data)
+    
+    def delete(self, request, id):
+        
+        color = Color.objects.get(id=id)
+        color.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+class ColorDetailAdmin(APIView):
+    # permission_classes = [IsAdminUser]
+
+    def get_object(self, id):
+        try:
+            return Color.objects.get(id=id)
+        except Color.DoesNotExist:
+            return None
+
+    def get(self, request, id):
+        color = self.get_object(id)
+        if not color:
+            return Response({'error': 'رنگ مورد نظر یافت نشد '}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = ColorSerializer(color)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, id):
+        color = self.get_object(id)
+        if not color:
+            return Response({'error': 'رنگ تکراری میباشد'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = ColorSerializer(color, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, id):
+        
+        color = Color.objects.get(id=id)
+        color.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+        
 
 class Shoeview(APIView):
 
@@ -197,7 +246,7 @@ class PantsView(APIView):
         category = Category.objects.filter(title__icontains="شلوار").order_by('-created_date')
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
-
+    
 class RateProductView(APIView):
     
     permission_classes = [IsAuthenticated]
