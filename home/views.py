@@ -21,8 +21,9 @@ class ProductPagination(pagination.PageNumberPagination):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    lookup_field = 'slug'  # Use slug for lookups
+    lookup_field = 'slug'  
     pagination_class = ProductPagination
+
 
 class ProductsByCategory(APIView):
     def get(self, request, category_id):
@@ -60,6 +61,7 @@ class ProductFilter(filters.FilterSet):
     def filter_by_color(self, queryset, name, value):
         return queryset.filter(color__icontains=value)
 
+
 class ProductSearchView(ListAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -76,21 +78,30 @@ class ProductListAdmin(APIView):
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
     
+
 class ProductListCreateAdmin(APIView):
 
     # permission_classes = [IsAdminUser]
     def post(self, request):
         serializer = ProductSerializer(data=request.data, context={'request': request})
+        
+        # Extract the slug from the request data
+        slug = request.data.get('slug')
+        
+        # Check if the slug already exists
+        if Product.objects.filter(slug=slug).exists():
+            return Response({'error': 'Product with this slug already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+        
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def get(self, request):
-        # Filter products by created_at field and limit to 15 latest items
         products = Product.objects.order_by('-created_at')
         serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)   
+        return Response(serializer.data)
     
         
 class ProductDetailAdmin(APIView):
@@ -116,7 +127,6 @@ class ProductDetailAdmin(APIView):
         product = self.get_object(id)
         product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-        
 
 
 class ProductSearchAdmin(APIView):
@@ -145,6 +155,7 @@ class CategoryAdmin(APIView):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
+
     def get(self, request):
         category = Category.objects.all().order_by('-created_date')
         serializer = CategorySerializer(category, many=True)
@@ -152,7 +163,7 @@ class CategoryAdmin(APIView):
 
 
 class CategoryDetailAdmin(APIView):
-    permission_classes = [IsAdminUser]
+    # permission_classes = [IsAdminUser]
 
     def get(self, request, id):
         category = get_object_or_404(Category, id=id)
@@ -187,11 +198,7 @@ class ColorAdmin(APIView):
         serializer = ColorSerializer(color, many=True)
         return Response(serializer.data)
     
-    def delete(self, request, id):
-        
-        color = Color.objects.get(id=id)
-        color.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+   
 class ColorDetailAdmin(APIView):
     # permission_classes = [IsAdminUser]
 

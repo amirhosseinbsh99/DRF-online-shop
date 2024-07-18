@@ -19,7 +19,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 class ColorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Color
-        fields = ['name', 'hex_code']
+        fields = ['id','name', 'hex_code']
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,7 +28,8 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
-    colors = ColorSerializer(many=True)
+    colors = ColorSerializer(many=True, read_only=True)  # For displaying colors with name
+    color_ids = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True, write_only=True)  # For inputting color IDs
     average_rating = serializers.ReadOnlyField()
 
     def validate_slug(self, value):
@@ -42,27 +43,25 @@ class ProductSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        colors_data = validated_data.pop('colors', [])
+        colors_data = validated_data.pop('color_ids', [])
         product = Product.objects.create(**validated_data)
-
-        for color_data in colors_data:
-            color, created = Color.objects.get_or_create(**color_data)
-            product.colors.add(color)
+        product.colors.set(colors_data)  # Associate colors with the product
 
         request = self.context.get('request')
-        images_data = request.FILES.getlist('images')
-        for image_data in images_data:
-            ProductImage.objects.create(product=product, image=image_data)
+        if request and request.FILES:
+            images_data = request.FILES.getlist('images')
+            for image_data in images_data:
+                ProductImage.objects.create(product=product, image=image_data)
 
         return product
 
-    
+
 
     class Meta:
         model = Product
         fields = [
             'id', 'category', 'name', 'brand', 'description', 'model_number',
-            'available', 'price', 'stock', 'colors', 'star_rating',
+            'available', 'price', 'stock', 'colors','color_ids', 'star_rating',
             'size', 'material', 'created_at', 'updated_at', 'slug', 'images',
             'average_rating'
         ]

@@ -13,7 +13,7 @@ class Category(models.Model):
     def __str__(self):
         return f'{self.id}, {self.title}'
 
-class Color(models.Model):
+class Color(models.Model):  
     name = models.CharField(max_length=50, unique=True)
     hex_code = models.CharField(max_length=7)
     
@@ -29,7 +29,7 @@ class Product(models.Model):
     available = models.BooleanField(default=True)
     price = models.IntegerField()
     stock = models.PositiveIntegerField()
-    colors = models.ManyToManyField(Color, blank=True)
+    colors = models.ManyToManyField(Color, blank=True)  
     size = models.CharField(max_length=10, null=True, blank=True)
     material = models.CharField(max_length=30, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
