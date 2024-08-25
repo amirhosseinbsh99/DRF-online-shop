@@ -67,10 +67,9 @@ class ProductSearchView(ListAPIView):
     serializer_class = ProductSerializer
     filter_backends = [drf_filters.SearchFilter, DjangoFilterBackend]
     search_fields = ['name', 'category__title', 'price', 'size', 'color']
-    filterset_class = ProductFilter  # Use the filter set here
+    filterset_class = ProductFilter  
 
 class ProductListAdmin(APIView):
-
     # permission_classes = [IsAdminUser]
 
     def get(self, request):
@@ -130,7 +129,6 @@ class ProductDetailAdmin(APIView):
 
 
 class ProductSearchAdmin(APIView):
-
     # permission_classes = [IsAdminUser]
 
     def get(self, request):
@@ -143,7 +141,7 @@ class ProductSearchAdmin(APIView):
             return Response({"error": "No search query provided"}, status=status.HTTP_400_BAD_REQUEST)
         
         #http://127.0.0.1:8000/padmin/search/?q=nike
-
+        
 class CategoryAdmin(APIView):
     # permission_classes = [IsAdminUser]
     def post(self, request):
@@ -154,7 +152,7 @@ class CategoryAdmin(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+        
 
     def get(self, request):
         category = Category.objects.all().order_by('-created_date')
@@ -181,7 +179,7 @@ class CategoryDetailAdmin(APIView):
         category = get_object_or_404(Category, id=id)
         category.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
 class ColorAdmin(APIView):
     # permission_classes = [IsAdminUser]
     def post(self, request):
@@ -197,8 +195,8 @@ class ColorAdmin(APIView):
         color = Color.objects.all()
         serializer = ColorSerializer(color, many=True)
         return Response(serializer.data)
-    
-   
+
+
 class ColorDetailAdmin(APIView):
     # permission_classes = [IsAdminUser]
 
@@ -227,7 +225,7 @@ class ColorDetailAdmin(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, id):
-        
+
         color = Color.objects.get(id=id)
         color.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -256,7 +254,7 @@ class PantsView(APIView):
     
 class RateProductView(APIView):
     
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def post(self, request, product_slug):
         product = get_object_or_404(Product, slug=product_slug)
@@ -271,12 +269,9 @@ class RateProductView(APIView):
                 return Response({"error": "Rating must be between 1 and 5"}, status=status.HTTP_400_BAD_REQUEST)
         except ValueError:
             return Response({"error": "Invalid rating value"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Update the product's total rating and number of ratings
         product.total_rating += rating
         product.number_of_ratings += 1
-        product.star_rating = product.average_rating  # Use the property method to get the value
+        product.star_rating = product.average_rating  
         product.save()
-
         return Response({"average_rating": product.star_rating}, status=status.HTTP_200_OK)
         

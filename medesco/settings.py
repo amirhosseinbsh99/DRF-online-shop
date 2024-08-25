@@ -165,7 +165,8 @@ AUTHENTICATION_BACKENDS = [
 ]
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
-    'https://zworks.ir'
+    'https://zworks.ir',
+    'https://medesco.ir'
 
 
     # Add other origins here

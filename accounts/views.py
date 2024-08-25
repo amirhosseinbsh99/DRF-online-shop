@@ -9,7 +9,6 @@ from .serializers import CustomerSerializer,CustomerLoginSerializer,DashboardVie
 from .models import Customer
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
-
 from django.conf import settings
 from django.http import JsonResponse, HttpResponseRedirect
 import requests
@@ -41,8 +40,7 @@ class LoginView(APIView):
         serializer = CustomerLoginSerializer(data=request.data)
         if serializer.is_valid():
             phone_number = serializer.validated_data['phone_number']
-            password = serializer.validated_data['password']
-            user = authenticate(request, phone_number=phone_number, password=password)
+            user = authenticate(request, phone_number=phone_number)
             if user is not None:
                 login(request, user)
                 return Response({"message": "با موفقیت وارد شدید"}, status=status.HTTP_200_OK)
