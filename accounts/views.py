@@ -12,16 +12,49 @@ from rest_framework.decorators import api_view, permission_classes
 from django.conf import settings
 from django.http import JsonResponse, HttpResponseRedirect
 import requests
-import json
+import json,random
+from kavenegar import *
 from django.urls import reverse
+
+
 class SignUpView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = CustomerSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
-            # Create basket for the newly created user
-            Basket.objects.create(customer=user)
-            return Response({"message": "ثبت نام با موفقیت انجام شد"}, status=status.HTTP_201_CREATED)
+            try:
+                otp = random.randint(10000, 99999)
+
+
+                api = KavenegarAPI('38754B58494F5A4B65376C54574469305042395A5139455754744E6E646662676E33712F3130726F73426F3D')
+                phone = serializer.validated_data.get('phone_number')
+
+                params = {
+                    
+                'token': otp,
+                'receptor': phone,
+                'template': 'verify',
+                'type': 'sms'
+                }
+                response = api.verify_lookup(params)
+                print(response)
+                user = serializer.save()
+                # Store the OTP in the user's profile (or any other model you prefer)
+                user.otp = otp
+                user.save()
+                # Create a basket for the newly created user
+                Basket.objects.create(customer=user)
+                # Redirect or return a success message
+                return Response({"message": "ثبت نام با موفقیت انجام شد"}, status=status.HTTP_201_CREATED)
+            
+            except APIException as e: 
+                print(e)
+                return Response({"message": "Failed to send OTP"}, status=status.HTTP_400_BAD_REQUEST)
+            except HTTPException as e: 
+                print(e)
+                return Response({"error": "HTTP error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+            
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
@@ -158,11 +191,6 @@ class BasketItemCreateView(APIView):
 
         serializer = BasketItemSerializer(basket_item)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
-
-
-
-
 
 
 class PaymentRequestView(APIView):

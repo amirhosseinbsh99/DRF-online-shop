@@ -15,8 +15,13 @@ class CustomerSerializer(serializers.ModelSerializer):
     def validate_phone_number(self, value):
         if len(value) != 11:
             raise serializers.ValidationError("شماره موبایل باید 11 رقمی باشد")
+        if Customer.objects.filter(phone_number=value).exists():
+            raise serializers.ValidationError("کاربری با این شماره موبایل قبلاً ثبت نام کرده است")
         return value
-
+    def validate_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError("رمز عبور باید حداقل 8 کاراکتر باشد")
+        return value
     def create(self, validated_data):
         customer = Customer(
             phone_number=validated_data['phone_number'],

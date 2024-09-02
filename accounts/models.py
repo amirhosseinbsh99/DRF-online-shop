@@ -7,6 +7,7 @@ class Customer(AbstractUser):
     phone_number = models.CharField(max_length=11, unique=True)
     post_Code = models.IntegerField(null=True, blank=True)
     is_admin = models.BooleanField(default=False)
+    token_send = models.IntegerField(null = True , blank = True)   
 
     # def save(self, *args, **kwargs):
     #     # Set the username to be the same as the phone_number
