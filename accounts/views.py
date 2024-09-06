@@ -10,11 +10,9 @@ from .models import Customer
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from django.conf import settings
-from django.http import JsonResponse, HttpResponseRedirect
 import requests
 import json,random
 from kavenegar import *
-from django.urls import reverse
 
 
 class SignUpView(APIView):
