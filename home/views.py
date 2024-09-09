@@ -33,17 +33,27 @@ class ProductsByCategory(APIView):
 
 
 class HomeView(ListAPIView):
-    queryset = Product.objects.filter(available=True)
     serializer_class = ProductSerializer
 
-    def get_queryset(self):
-        # Update availability of products with zero stock
-        zero_stock_products = Product.objects.filter(stock=0)
-        for product in zero_stock_products:
-            product.Available = False
-            product.save()
-        # Return queryset excluding products with zero stock
-        return Product.objects.filter(available=True).order_by('-created_at')
+    def get(self, request):
+        # Query products for each category separately
+        shoes = Product.objects.filter(available=True, category__title__icontains='کفش').order_by('-created_at')
+        tshirts = Product.objects.filter(available=True, category__title__icontains='تیشرت').order_by('-created_at')
+        pants = Product.objects.filter(available=True, category__title__icontains='شلوار').order_by('-created_at')
+
+        # Serialize each queryset
+        shoes_serializer = ProductSerializer(shoes, many=True)
+        tshirts_serializer = ProductSerializer(tshirts, many=True)
+        pants_serializer = ProductSerializer(pants, many=True)
+
+        # Return response with three sections
+        return Response({
+            'shoes': shoes_serializer.data,
+            'tshirts': tshirts_serializer.data,
+            'pants': pants_serializer.data
+        })
+    
+    
 
 
 class ProductFilter(filters.FilterSet):
@@ -252,26 +262,27 @@ class PantsView(APIView):
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
     
-class RateProductView(APIView):
     
-    # permission_classes = [IsAuthenticated]
+# class RateProductView(APIView):
+    
+#     # permission_classes = [IsAuthenticated]
 
-    def post(self, request, product_slug):
-        product = get_object_or_404(Product, slug=product_slug)
-        rating = request.data.get('rating')
+#     def post(self, request, product_slug):
+#         product = get_object_or_404(Product, slug=product_slug)
+#         rating = request.data.get('rating')
 
-        if rating is None:
-            return Response({"error": "Rating is required"}, status=status.HTTP_400_BAD_REQUEST)
+#         if rating is None:
+#             return Response({"error": "Rating is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            rating = int(rating)
-            if rating < 1 or rating > 5:
-                return Response({"error": "Rating must be between 1 and 5"}, status=status.HTTP_400_BAD_REQUEST)
-        except ValueError:
-            return Response({"error": "Invalid rating value"}, status=status.HTTP_400_BAD_REQUEST)
-        product.total_rating += rating
-        product.number_of_ratings += 1
-        product.star_rating = product.average_rating  
-        product.save()
-        return Response({"average_rating": product.star_rating}, status=status.HTTP_200_OK)
+#         try:
+#             rating = int(rating)
+#             if rating < 1 or rating > 5:
+#                 return Response({"error": "Rating must be between 1 and 5"}, status=status.HTTP_400_BAD_REQUEST)
+#         except ValueError:
+#             return Response({"error": "Invalid rating value"}, status=status.HTTP_400_BAD_REQUEST)
+#         product.total_rating += rating
+#         product.number_of_ratings += 1
+#         product.star_rating = product.average_rating  
+#         product.save()
+#         return Response({"average_rating": product.star_rating}, status=status.HTTP_200_OK)
         
