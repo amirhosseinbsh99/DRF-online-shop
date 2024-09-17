@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import HomeView,ProductListCreateAdmin,ProductViewSet,ProductsByCategory,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,Shoeview,ShirtView,PantsView,ProductDetailAdmin,ColorAdmin,ColorDetailAdmin
+from .views import HomeView,ProductListCreateAdmin,ProductViewSet,ProductsByCategory,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,ShoeView,ShirtView,PantsView,ProductDetailAdmin,ColorAdmin,ColorDetailAdmin
 
 
 app_name = 'home'
@@ -23,10 +23,9 @@ urlpatterns = [
         path('padmin/category/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
         path('padmin/category/create/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
         path('padmin/category/<int:id>/', CategoryDetailAdmin.as_view(), name='EditCategoryAdmin'),
-        path('shoes/', Shoeview.as_view(), name='ShoeView'),
+        path('shoes/', ShoeView.as_view(), name='ShoeView'),
         path('shirts/', ShirtView.as_view(), name='ShirtView'),
         path('pants/', PantsView.as_view(), name='PantsView'),
-        # path('products/<slug:product_slug>/rate/', RateProductView.as_view(), name='rate-product'),
         path('products/category/<int:category_id>/', ProductsByCategory.as_view(), name='products-by-category'),
 
 

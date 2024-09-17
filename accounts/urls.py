@@ -10,7 +10,6 @@ urlpatterns = [
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
     path('basket/', BasketListCreateView.as_view(), name='basket-list-create'),
     path('basket/<int:basket_id>/items/', BasketItemCreateView.as_view(), name='basket-item-create'),
-    
     path('basket/<int:basket_id>/request/', PaymentRequestView.as_view(), name='request'),
     path('basket/<int:basket_id>/verify/', PaymentVerifyView.as_view(), name='verify'),
     path('basket/<int:basket_id>/OrderHistory/', OrderHistoryView.as_view(), name='OrderHistory'),

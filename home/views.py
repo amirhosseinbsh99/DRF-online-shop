@@ -175,8 +175,23 @@ class CategoryDetailAdmin(APIView):
 
     def get(self, request, id):
         category = get_object_or_404(Category, id=id)
-        serializer = CategorySerializer(category)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        # Get the child categories (if any)
+        child_categories = category.children.all()  # 'children' is the related_name for the parent field
+
+        # Serialize the parent category
+        category_serializer = CategorySerializer(category)
+
+        # Serialize the child categories
+        child_serializer = CategorySerializer(child_categories, many=True)
+
+        # Combine the data
+        data = {
+            'category': category_serializer.data,
+            'child_categories': child_serializer.data
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
 
     def put(self, request, id):
         category = get_object_or_404(Category, id=id)
@@ -241,12 +256,21 @@ class ColorDetailAdmin(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
         
 
-class Shoeview(APIView):
+class ShoeView(APIView):
 
     def get(self, request):
-        category = Category.objects.filter(title__icontains="کفش").order_by('-created_date')
-        serializer = CategorySerializer(category, many=True)
+        # Get all categories containing the word "کفش"
+        shoe_categories = Category.objects.filter(title__icontains="کفش")
+        
+        # Get all products related to these categories
+        shoes = Product.objects.filter(available=True, category__in=shoe_categories).order_by('-created_at')
+
+        # Serialize the product data
+        serializer = ProductSerializer(shoes, many=True)
+        
         return Response(serializer.data)
+
+
     
 class ShirtView(APIView):
 
