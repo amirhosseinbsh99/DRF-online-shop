@@ -1,6 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+from django.dispatch import receiver
+from django.db.models.signals import post_save
+from django.conf import settings
+from rest_framework.authtoken.models import Token
 
 class Customer(AbstractUser):
     
@@ -9,10 +13,15 @@ class Customer(AbstractUser):
     is_admin = models.BooleanField(default=False)
     token_send = models.IntegerField(null = True , blank = True)   
 
-    # def save(self, *args, **kwargs):
-    #     # Set the username to be the same as the phone_number
-    #     self.username = self.phone_number
-    #     super().save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        # Set the username to be the same as the phone_number
+        self.username = self.phone_number
+        super().save(*args, **kwargs)
 
-    # def __str__(self):
-    #     return self.phone_number if self.phone_number else ""
+    def __str__(self):
+        return self.phone_number if self.phone_number else ""
+
+@receiver(post_save,sender=settings.AUTH_USER_MODEL)
+def create_auth_token(sender, instance = None, created = False, **kwargs):
+    if created:
+        Token.objects.create(user = instance)

@@ -13,48 +13,62 @@ from django.conf import settings
 import requests
 import json,random
 from kavenegar import *
+from rest_framework.authtoken.models import Token
 
 
 class SignUpView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request, *args, **kwargs):
         serializer = CustomerSerializer(data=request.data)
+        
         if serializer.is_valid():
-            try:
-                otp = random.randint(10000, 99999)
-
-
-                api = KavenegarAPI('38754B58494F5A4B65376C54574469305042395A5139455754744E6E646662676E33712F3130726F73426F3D')
-                phone = serializer.validated_data.get('phone_number')
-
-                params = {
-                    
-                'token': otp,
-                'receptor': phone,
-                'template': 'verify',
-                'type': 'sms'
-                }
-                response = api.verify_lookup(params)
-                print(response)
-                user = serializer.save()
-                # Store the OTP in the user's profile (or any other model you prefer)
-                user.otp = otp
-                user.save()
-                # Create a basket for the newly created user
-                Basket.objects.create(customer=user)
-                # Redirect or return a success message
-                return Response({"message": "ثبت نام با موفقیت انجام شد"}, status=status.HTTP_201_CREATED)
-            
-            except APIException as e: 
-                print(e)
-                return Response({"message": "Failed to send OTP"}, status=status.HTTP_400_BAD_REQUEST)
-            except HTTPException as e: 
-                print(e)
-                return Response({"error": "HTTP error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-            
+            serializer.save()
+            return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# class SignUpView(APIView):
+#     def post(self, request, *args, **kwargs):
+#         serializer = CustomerSerializer(data=request.data)
+#         if serializer.is_valid():
+            # try:
+            #     otp = random.randint(10000, 99999)
+
+
+            #     api = KavenegarAPI('38754B58494F5A4B65376C54574469305042395A5139455754744E6E646662676E33712F3130726F73426F3D')
+            #     phone = serializer.validated_data.get('phone_number')
+
+            #     params = {
+                    
+            #     'token': otp,
+            #     'receptor': phone,
+            #     'template': 'verify',
+            #     'type': 'sms'
+            #     }
+            #     response = api.verify_lookup(params)
+            #     print(response)
+            #        user = serializer.save()
+            #     # Store the OTP in the user's profile (or any other model you prefer)
+            #     user.otp = otp
+            #     user.save()
+            #     # Create a basket for the newly created user
+            #     Basket.objects.create(customer=user)
+            #     # Redirect or return a success message
+            # return Response({"message": "ثبت نام با موفقیت انجام شد"}, status=status.HTTP_201_CREATED)
+            
+            # except APIException as e: 
+            #     print(e)
+            #     return Response({"message": "Failed to send OTP"}, status=status.HTTP_400_BAD_REQUEST)
+            # except HTTPException as e: 
+            #     print(e)
+            #     return Response({"error": "HTTP error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+            
+        # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    
+
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
@@ -69,13 +83,19 @@ class LoginView(APIView):
 
     def post(self, request, *args, **kwargs):
         serializer = CustomerLoginSerializer(data=request.data)
+    
         if serializer.is_valid():
             phone_number = serializer.validated_data['phone_number']
-            user = authenticate(request, phone_number=phone_number)
+            password = serializer.validated_data['password']
+        
+            user = authenticate(username=phone_number, password=password)
+
             if user is not None:
-                login(request, user)
-                return Response({"message": "با موفقیت وارد شدید"}, status=status.HTTP_200_OK)
-            return Response({"error": "شماره موبایل یا پسورد اشتباه است"}, status=status.HTTP_401_UNAUTHORIZED)
+                token, _ = Token.objects.get_or_create(user=user)
+                return Response({'token': token.key}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+    
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
