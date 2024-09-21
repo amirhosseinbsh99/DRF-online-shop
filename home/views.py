@@ -33,7 +33,7 @@ class ProductsByCategory(APIView):
     
 class ProductsByColor(APIView):
     def get(self, request, color_id):
-        colors = Product.objects.filter(id=color_id)
+        colors = Product.objects.filter(colors=color_id)
         serializer = ProductSerializer(colors, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
