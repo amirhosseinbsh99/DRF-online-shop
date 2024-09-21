@@ -17,7 +17,7 @@ class ProductPagination(pagination.PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
-    
+
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -29,6 +29,12 @@ class ProductsByCategory(APIView):
     def get(self, request, category_id):
         products = Product.objects.filter(category_id=category_id)
         serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class ProductsByColor(APIView):
+    def get(self, request, color_id):
+        colors = Product.objects.filter(id=color_id)
+        serializer = ProductSerializer(colors, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -52,8 +58,8 @@ class HomeView(ListAPIView):
             'tshirts': tshirts_serializer.data,
             'pants': pants_serializer.data
         })
-    
-    
+
+   
 
 
 class ProductFilter(filters.FilterSet):

@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import HomeView,ProductListCreateAdmin,ProductViewSet,ProductsByCategory,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,ShoeView,ShirtView,PantsView,ProductDetailAdmin,ColorAdmin,ColorDetailAdmin
+from .views import HomeView,ProductListCreateAdmin,ProductViewSet,ProductsByCategory,ProductSearchAdmin,CategoryDetailAdmin,ProductSearchView,CategoryAdmin,ShoeView,ShirtView,PantsView,ProductDetailAdmin,ColorAdmin,ColorDetailAdmin,ProductsByColor
 
 
 app_name = 'home'
@@ -27,6 +27,7 @@ urlpatterns = [
         path('shirts/', ShirtView.as_view(), name='ShirtView'),
         path('pants/', PantsView.as_view(), name='PantsView'),
         path('products/category/<int:category_id>/', ProductsByCategory.as_view(), name='products-by-category'),
+        path('products/color/<int:color_id>/', ProductsByColor.as_view(), name='products-by-color'),
 
 
         path('', include(router.urls)),

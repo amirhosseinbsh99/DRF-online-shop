@@ -14,4 +14,4 @@ urlpatterns = [
     path('basket/<int:basket_id>/verify/', PaymentVerifyView.as_view(), name='verify'),
     path('basket/<int:basket_id>/OrderHistory/', OrderHistoryView.as_view(), name='OrderHistory'),
 
-]   
+]
