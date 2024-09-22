@@ -29,7 +29,8 @@ class CustomerSerializer(serializers.ModelSerializer):
         customer.set_password(validated_data['password'])
         customer.save()
         return customer
-    
+
+
 class CustomerLoginSerializer(serializers.Serializer):
     phone_number = serializers.CharField()
     password = serializers.CharField()
