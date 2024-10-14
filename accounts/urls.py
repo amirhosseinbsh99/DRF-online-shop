@@ -1,11 +1,12 @@
 from django.urls import path
-from accounts.views import SignUpView,LogoutView,BasketListCreateView,BasketItemCreateView,LoginView,DashboardView,PaymentVerifyView,PaymentRequestView,OrderHistoryView
+from accounts.views import SendOTPView,VerifyOTPAndCreateUserView,LogoutView,BasketListCreateView,BasketItemCreateView,LoginView,DashboardView,PaymentVerifyView,PaymentRequestView,OrderHistoryView
 from accounts import views
 app_name = 'account'
 
 urlpatterns = [
     path('login/',LoginView.as_view() ,name='LoginView' ),
-    path('signup/', SignUpView.as_view(), name='signup'),
+    path('signup/', SendOTPView.as_view(), name='signup'),
+    path('signup/verify/', VerifyOTPAndCreateUserView.as_view(), name='VerifyOTPAndCreateUserView'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
     path('basket/', BasketListCreateView.as_view(), name='basket-list-create'),

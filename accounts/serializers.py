@@ -32,8 +32,20 @@ class CustomerSerializer(serializers.ModelSerializer):
 
 
 class CustomerLoginSerializer(serializers.Serializer):
-    phone_number = serializers.CharField()
-    password = serializers.CharField()
+    phone_number = serializers.CharField(max_length=15)
+    password = serializers.CharField(write_only=True)
+
+    def validate_phone_number(self, value):
+        # Optionally, add phone number validation logic here (e.g., check if it's a valid number format)
+        if not value.isdigit():
+            raise serializers.ValidationError("شماره موبایل فقط باید عدد باشد")
+        return value
+
+    def validate_password(self, value):
+        # Add any additional password validation here if needed (e.g., complexity rules)
+        if len(value) < 8:
+            raise serializers.ValidationError("پسورد باید 8 رقمی باشد")
+        return value
 
 class DashboardViewSerializer(serializers.ModelSerializer):
     class Meta:

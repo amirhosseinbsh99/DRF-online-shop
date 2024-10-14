@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import authenticate,login
+from django.contrib.auth.password_validation import validate_password
 from home.models import Basket,Product,BasketItem
 from django.contrib.auth import logout
 from rest_framework.permissions import IsAuthenticated,BasePermission,AllowAny
@@ -10,64 +11,186 @@ from .models import Customer
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from django.conf import settings
-import requests
-import json,random
+import requests,secrets,os
+import json
+from django.utils import timezone
+from datetime import timedelta
 from kavenegar import *
 from rest_framework.authtoken.models import Token
 
 
-class SignUpView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        serializer = CustomerSerializer(data=request.data)
-        
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': "ثبت نام با موفقیت انجام شد"}, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-# class SignUpView(APIView):
+# class SendOTPView(APIView):
 #     def post(self, request, *args, **kwargs):
-#         serializer = CustomerSerializer(data=request.data)
-#         if serializer.is_valid():
-            # try:
-            #     otp = random.randint(10000, 99999)
+#         phone_number = request.data.get('phone_number')
+        
+#         if not phone_number:
+#             return Response({"error": "Phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
 
+#         try:
+#             # Check if a customer exists
+#             customer = Customer.objects.filter(phone_number=phone_number).first()
 
-            #     api = KavenegarAPI('38754B58494F5A4B65376C54574469305042395A5139455754744E6E646662676E33712F3130726F73426F3D')
-            #     phone = serializer.validated_data.get('phone_number')
+#             # If customer exists, check if the OTP is expired or if the last request was within the allowed time frame
+#             if customer:
+#                 if timezone.now() > customer.created_at + timedelta(minutes=2):
+#                     # If expired, delete the customer
+#                     customer.delete()
+#                     print(f"Deleted expired user with phone number: {phone_number}")
+#                 else:
+#                     # Check the last OTP request time
+#                     if customer.last_otp_request and timezone.now() < customer.last_otp_request + timedelta(minutes=2):
+#                         remaining_time = (customer.last_otp_request + timedelta(minutes=1) - timezone.now()).total_seconds()
+#                         return Response({"error": f"لطفا {int(remaining_time)} ثانیه صبر کنید"}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
-            #     params = {
-                    
-            #     'token': otp,
-            #     'receptor': phone,
-            #     'template': 'verify',
-            #     'type': 'sms'
-            #     }
-            #     response = api.verify_lookup(params)
-            #     print(response)
-            #        user = serializer.save()
-            #     # Store the OTP in the user's profile (or any other model you prefer)
-            #     user.otp = otp
-            #     user.save()
-            #     # Create a basket for the newly created user
-            #     Basket.objects.create(customer=user)
-            #     # Redirect or return a success message
-            # return Response({"message": "ثبت نام با موفقیت انجام شد"}, status=status.HTTP_201_CREATED)
+#             # Generate secure OTP
+#             otp = secrets.randbelow(90000) + 10000
+#             print(f"Generated OTP: {otp}")
+
+#             # Send OTP via Kavenegar
+#             api_key = settings.KAVENEGAR_API_KEY
+#             if not api_key:
+#                 return Response({"error": "Kavenegar API key is missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-            # except APIException as e: 
-            #     print(e)
-            #     return Response({"message": "Failed to send OTP"}, status=status.HTTP_400_BAD_REQUEST)
-            # except HTTPException as e: 
-            #     print(e)
-            #     return Response({"error": "HTTP error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#             api = KavenegarAPI(api_key)
+#             params = {
+#                 'token': otp,
+#                 'receptor': phone_number,
+#                 'template': 'verify',
+#                 'type': 'sms'
+#             }
 
+#             response = api.verify_lookup(params)
+#             print(f"Kavenegar response: {response}")
 
+#             # Save or update OTP on the Customer model
+#             customer, created = Customer.objects.get_or_create(phone_number=phone_number)
+#             customer.token_send = otp
+#             customer.created_at = timezone.now()  # Update the created_at time to now
+#             customer.last_otp_request = timezone.now()  # Update the last OTP request time
+#             customer.save()
+
+#             return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             print(f"Unexpected error: {e}")
+#             return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class SendOTPView(APIView):
+    def post(self, request, *args, **kwargs):
+        phone_number = request.data.get('phone_number')
+
+        if not phone_number:
+            return Response({"error": "Phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Check if a customer exists
+            customer = Customer.objects.filter(phone_number=phone_number).first()
+
+            # If customer exists, check if the OTP is expired or if the last request was within the allowed time frame
+            if customer:
+                if timezone.now() > customer.created_at + timedelta(minutes=2):
+                    # If expired, delete the customer
+                    customer.delete()
+                    print(f"Deleted expired user with phone number: {phone_number}")
+                else:
+                    # Check the last OTP request time
+                    if customer.last_otp_request and timezone.now() < customer.last_otp_request + timedelta(minutes=2):
+                        remaining_time = (customer.last_otp_request + timedelta(minutes=1) - timezone.now()).total_seconds()
+                        return Response({"error": f"لطفا {int(remaining_time)} ثانیه صبر کنید"}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+            # Disable OTP sending logic for testing
+            test_mode = getattr(settings, 'OTP_TEST_MODE', False)
+            if test_mode:
+                otp = 12345  # Static OTP for testing
+                print(f"Test mode enabled. Generated static OTP: {otp}")
+            else:
+                # Generate secure OTP
+                otp = secrets.randbelow(90000) + 10000
+                print(f"Generated OTP: {otp}")
+
+                # Send OTP via Kavenegar (only in non-test mode)
+                api_key = settings.KAVENEGAR_API_KEY
+                if not api_key:
+                    return Response({"error": "Kavenegar API key is missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+                api = KavenegarAPI(api_key)
+                params = {
+                    'token': otp,
+                    'receptor': phone_number,
+                    'template': 'verify',
+                    'type': 'sms'
+                }
+
+                response = api.verify_lookup(params)
+                print(f"Kavenegar response: {response}")
+
+            # Save or update OTP on the Customer model
+            customer, created = Customer.objects.get_or_create(phone_number=phone_number)
+            customer.token_send = otp
+            customer.created_at = timezone.now()  # Update the created_at time to now
+            customer.last_otp_request = timezone.now()  # Update the last OTP request time
+            customer.save()
+
+            return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class VerifyOTPAndCreateUserView(APIView):
+    def post(self, request, *args, **kwargs):
+        phone_number = request.data.get('phone_number')
+        otp = request.data.get('otp')
+        password = request.data.get('password')
+
+        if not phone_number or not otp or not password:
+            return Response({"error": "Phone number, OTP, and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
             
-        # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
+            # Retrieve the customer and validate OTP
+            customer = Customer.objects.filter(phone_number=phone_number).first()
+
+            if not customer:
+                return Response({"error": "کاربر یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Check if the OTP has expired (2 minutes)
+            if timezone.now() > customer.created_at + timedelta(minutes=2):
+                customer.delete()
+                return Response({"error": "OTP has expired. User deleted."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if customer.token_send != int(otp):
+                return Response({"error": "کد تایید اشتباه است"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate password (check length, strength, etc.)
+            try:
+                validate_password(password)  # Django's built-in password validation
+            except ValidationError as e:
+                return Response({"error": f"Password is invalid: {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            print(f"Customer is_active: {customer.is_active}")  # Check if condition is met
+            # OTP is valid, now set the password using set_password()
+            if not customer.is_active:
+                customer.is_active = True  # Activate the user
+                print(f"Received password: {password}")
+                customer.set_password(password)  # Hash and save the password
+                customer.save()  # Ensure to save the object
+
+
+                # Generate the auth token if needed
+                token, _ = Token.objects.get_or_create(user=customer)
+            else:
+                # If the user is already active, retrieve the existing token
+                token = Token.objects.get(user=customer)
+
+            return Response({
+                "message": "User created successfully",
+                "token": token.key
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return Response({"error": "Failed to verify OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class LogoutView(APIView):
@@ -87,12 +210,20 @@ class LoginView(APIView):
         if serializer.is_valid():
             phone_number = serializer.validated_data['phone_number']
             password = serializer.validated_data['password']
-        
-            user = authenticate(username=phone_number, password=password)
+            
+            # Manually retrieve the user based on phone number
+            try:
+                user = Customer.objects.get(phone_number=phone_number)
+            except Customer.DoesNotExist:
+                return Response({'error': 'کاربری با این شماره موبایل یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
 
-            if user is not None:
-                token, _ = Token.objects.get_or_create(user=user)
-                return Response({'token': token.key}, status=status.HTTP_200_OK)
+            # Check if the password is correct
+            if user.check_password(password):
+                if user.is_active:
+                    token, _ = Token.objects.get_or_create(user=user)
+                    return Response({'token': token.key}, status=status.HTTP_200_OK)
+                else:
+                    return Response({'error': 'حساب کاربری شما غیرفعال است'}, status=status.HTTP_403_FORBIDDEN)
             else:
                 return Response({'error': 'شماره موبایل یا پسورد اشتباه است'}, status=status.HTTP_401_UNAUTHORIZED)
     
