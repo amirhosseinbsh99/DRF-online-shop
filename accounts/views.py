@@ -17,7 +17,7 @@ from django.utils import timezone
 from datetime import timedelta
 from kavenegar import *
 from rest_framework.authtoken.models import Token
-
+from django.core.exceptions import ValidationError 
 
 # class SendOTPView(APIView):
 #     def post(self, request, *args, **kwargs):
@@ -184,7 +184,10 @@ class VerifyOTPAndCreateUserView(APIView):
 
             return Response({
                 "message": "User created successfully",
-                "token": token.key
+                "token": token.key,
+                "phone_number":phone_number,
+                
+
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -221,7 +224,14 @@ class LoginView(APIView):
             if user.check_password(password):
                 if user.is_active:
                     token, _ = Token.objects.get_or_create(user=user)
-                    return Response({'token': token.key}, status=status.HTTP_200_OK)
+                    return Response({
+                        'token': token.key,
+                        'phone_number': user.phone_number,
+                        'first_name': user.first_name,
+                        'last_name':user.last_name,
+                        'post_Code':user.post_Code,
+                        'address':user.address,
+                        }, status=status.HTTP_200_OK)
                 else:
                     return Response({'error': 'حساب کاربری شما غیرفعال است'}, status=status.HTTP_403_FORBIDDEN)
             else:

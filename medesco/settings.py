@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'zeep',
     'django_select2',
     'rest_framework.authtoken',
-
+    
 ]
 
 # ZARINPAL_SANDBOX = True
