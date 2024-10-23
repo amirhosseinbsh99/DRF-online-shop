@@ -79,16 +79,26 @@ class SendOTPView(APIView):
     
     def post(self, request, *args, **kwargs):
         phone_number = request.data.get('phone_number')
+        password = request.data.get('password')
 
         if not phone_number:
             return Response({"error": "Phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not password:
+            return Response({"error": "Password is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             # Check if a customer exists
             customer = Customer.objects.filter(phone_number=phone_number).first()
 
+            
+                
+            
             # If customer exists, check if the OTP is expired or if the last request was within the allowed time frame
             if customer:
+                if customer.is_active:
+                    return Response({"error": "این شماره قبلا در سیستم ثبت شده است"}, status=status.HTTP_400_BAD_REQUEST)
+                
                 if timezone.now() > customer.created_at + timedelta(minutes=2):
                     # If expired, delete the customer
                     customer.delete()
@@ -98,7 +108,15 @@ class SendOTPView(APIView):
                     if customer.last_otp_request and timezone.now() < customer.last_otp_request + timedelta(minutes=2):
                         remaining_time = (customer.last_otp_request + timedelta(minutes=1) - timezone.now()).total_seconds()
                         return Response({"error": f"لطفا {int(remaining_time)} ثانیه صبر کنید"}, status=status.HTTP_429_TOO_MANY_REQUESTS)
-
+            else:
+                customer = Customer(phone_number=phone_number)    
+            try:
+                validate_password(password)  # Django's built-in password validation
+                customer.set_password(password)  # Hash and save the password
+                customer.save()  # Ensure to save the object
+            except ValidationError as e:
+                return Response({"error": f"Password is invalid: {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
+            
             # Disable OTP sending logic for testing
             test_mode = getattr(settings, 'OTP_TEST_MODE', False)
             if test_mode:
@@ -142,11 +160,9 @@ class VerifyOTPAndCreateUserView(APIView):
     def post(self, request, *args, **kwargs):
         phone_number = request.data.get('phone_number')
         otp = request.data.get('otp')
-        password = request.data.get('password')
-
-        if not phone_number or not otp or not password:
-            return Response({"error": "Phone number, OTP, and password are required"}, status=status.HTTP_400_BAD_REQUEST)
-
+        
+        if not phone_number or not otp:
+             return Response({"error": "Phone number and otp are required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             
             # Retrieve the customer and validate OTP
@@ -164,17 +180,13 @@ class VerifyOTPAndCreateUserView(APIView):
                 return Response({"error": "کد تایید اشتباه است"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Validate password (check length, strength, etc.)
-            try:
-                validate_password(password)  # Django's built-in password validation
-            except ValidationError as e:
-                return Response({"error": f"Password is invalid: {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
+            
             
             print(f"Customer is_active: {customer.is_active}")  # Check if condition is met
             # OTP is valid, now set the password using set_password()
             if not customer.is_active:
                 customer.is_active = True  # Activate the user
-                print(f"Received password: {password}")
-                customer.set_password(password)  # Hash and save the password
+                
                 customer.save()  # Ensure to save the object
                 # Generate the auth token if needed
                 token, _ = Token.objects.get_or_create(user=customer)
