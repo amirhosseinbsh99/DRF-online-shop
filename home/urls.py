@@ -11,7 +11,7 @@ app_name = 'home'
 router = DefaultRouter()
 router.register(r'products', ProductViewSet)
 urlpatterns = [
-
+        
         path('', HomeView.as_view(), name='ProductView'),
         path('Search/', ProductSearchView.as_view(), name='ProductSearchView'),
         path('padmin/', ProductListCreateAdmin.as_view(), name='ProductAdmin'),
@@ -28,8 +28,6 @@ urlpatterns = [
         path('pants/', PantsView.as_view(), name='PantsView'),
         path('products/category/<int:category_id>/', ProductsByCategory.as_view(), name='products-by-category'),
         path('products/color/<int:color_id>/', ProductsByColor.as_view(), name='products-by-color'),
-
-
         path('', include(router.urls)),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -74,13 +74,15 @@ from django.core.exceptions import ValidationError
 #         except Exception as e:
 #             print(f"Unexpected error: {e}")
 #             return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class SendOTPView(APIView):
+    
     def post(self, request, *args, **kwargs):
         phone_number = request.data.get('phone_number')
 
         if not phone_number:
             return Response({"error": "Phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
-
+        
         try:
             # Check if a customer exists
             customer = Customer.objects.filter(phone_number=phone_number).first()
@@ -174,8 +176,6 @@ class VerifyOTPAndCreateUserView(APIView):
                 print(f"Received password: {password}")
                 customer.set_password(password)  # Hash and save the password
                 customer.save()  # Ensure to save the object
-
-
                 # Generate the auth token if needed
                 token, _ = Token.objects.get_or_create(user=customer)
             else:
@@ -206,7 +206,7 @@ class LogoutView(APIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
-
+    
     def post(self, request, *args, **kwargs):
         serializer = CustomerLoginSerializer(data=request.data)
     

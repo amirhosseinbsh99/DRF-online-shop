@@ -10,6 +10,7 @@ from django_filters import rest_framework as filters
 from accounts.views import IsAdminUser
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q
 
 
 class ProductPagination(pagination.PageNumberPagination):
@@ -43,7 +44,7 @@ class HomeView(ListAPIView):
 
     def get(self, request):
         # Query products for each category separately
-        shoes = Product.objects.filter(available=True, category__title__icontains='کفش').order_by('-created_at')
+        shoes = Product.objects.filter(Q(available=True) & (Q(category__title__icontains='کفش') | Q(category__title__icontains='کتونی'))).order_by('-created_at')
         tshirts = Product.objects.filter(available=True, category__title__icontains='تیشرت').order_by('-created_at')
         pants = Product.objects.filter(available=True, category__title__icontains='شلوار').order_by('-created_at')
 
