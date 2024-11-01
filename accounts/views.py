@@ -190,15 +190,18 @@ class VerifyOTPAndCreateUserView(APIView):
                 customer.save()  # Ensure to save the object
                 # Generate the auth token if needed
                 token, _ = Token.objects.get_or_create(user=customer)
+                Basket.objects.create(customer=customer)
+                baskets = Basket.objects.get(customer=customer)
+
             else:
                 # If the user is already active, retrieve the existing token
                 token = Token.objects.get(user=customer)
-
+                
             return Response({
                 "message": "User created successfully",
                 "token": token.key,
                 "phone_number":phone_number,
-                
+                "BasketID":baskets.id,
 
             }, status=status.HTTP_201_CREATED)
 
@@ -221,7 +224,7 @@ class LoginView(APIView):
     
     def post(self, request, *args, **kwargs):
         serializer = CustomerLoginSerializer(data=request.data)
-    
+        
         if serializer.is_valid():
             phone_number = serializer.validated_data['phone_number']
             password = serializer.validated_data['password']
@@ -229,6 +232,8 @@ class LoginView(APIView):
             # Manually retrieve the user based on phone number
             try:
                 user = Customer.objects.get(phone_number=phone_number)
+                baskets = Basket.objects.get(customer=user)
+
             except Customer.DoesNotExist:
                 return Response({'error': 'کاربری با این شماره موبایل یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -243,6 +248,7 @@ class LoginView(APIView):
                         'last_name':user.last_name,
                         'post_Code':user.post_Code,
                         'address':user.address,
+                        'BasketID':baskets.id,
                         }, status=status.HTTP_200_OK)
                 else:
                     return Response({'error': 'حساب کاربری شما غیرفعال است'}, status=status.HTTP_403_FORBIDDEN)
