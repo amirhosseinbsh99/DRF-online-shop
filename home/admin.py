@@ -7,7 +7,7 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Color)
 class ColorAdmin(admin.ModelAdmin):
-    list_display = ['name']
+    list_display = ['id','name']
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -17,7 +17,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'price', 'stock', 'available', 'created_at', 'updated_at')
+    list_display = ('id','name', 'category', 'price', 'stock', 'available', 'created_at', 'updated_at')
     list_filter = ('available', 'category')
     search_fields = ('name',)
 

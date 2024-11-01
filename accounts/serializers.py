@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.validators import UniqueValidator
 from .models import Customer
-from home.models import Product,BasketItem,Basket
+from home.models import Product,BasketItem,Basket,Color
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -54,17 +54,17 @@ class DashboardViewSerializer(serializers.ModelSerializer):
 
 class BasketItemSerializer(serializers.ModelSerializer):
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
-
+    color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), required=False)
     class Meta:
         model = BasketItem
-        fields = ['id', 'product', 'quantity', 'peyment']
+        fields = ['id', 'product', 'quantity', 'peyment','color']
 
-class BasketItemSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+# class BasketItemSerializer(serializers.ModelSerializer):
+#     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
 
-    class Meta:
-        model = BasketItem
-        fields = ['id', 'product', 'quantity', 'peyment']
+#     class Meta:
+#         model = BasketItem
+#         fields = ['id', 'product', 'quantity', 'peyment']
 
 class BasketSerializer(serializers.ModelSerializer):
     items = serializers.SerializerMethodField()

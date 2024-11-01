@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import authenticate,login
 from django.contrib.auth.password_validation import validate_password
-from home.models import Basket,Product,BasketItem
+from home.models import Basket,Product,BasketItem,Color
 from django.contrib.auth import logout
 from rest_framework.permissions import IsAuthenticated,BasePermission,AllowAny
 from .serializers import CustomerSerializer,CustomerLoginSerializer,DashboardViewSerializer,BasketSerializer,BasketItemSerializer
@@ -321,47 +321,73 @@ class BasketItemCreateView(APIView):
 
     def get(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
-        
-        # Filter BasketItems with peyment=False
         basket_items = BasketItem.objects.filter(basket=basket, peyment=False)
-        
-        # Serialize basket and its items together
         serializer = BasketSerializer(basket, context={'peyment': False})
         return Response(serializer.data)
     
     def post(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
+        color_id = request.data.get('color')  # Make sure this is 'color_id' in your request data
         product_id = request.data.get('product_id')
         quantity = request.data.get('quantity', 1)
+        
         try:
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Retrieve color if provided
+        color = None
+        if color_id:
+            try:
+                color = Color.objects.get(id=color_id)
+            except Color.DoesNotExist:
+                return Response({'error': 'Color not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        basket_item, created = BasketItem.objects.get_or_create(basket=basket, product=product)
+        # Include color in the get_or_create lookup to allow different colors of the same product
+        basket_item, created = BasketItem.objects.get_or_create(
+            basket=basket,
+            product=product,
+            color=color,  # Now color is included in the uniqueness criteria
+            defaults={'quantity': quantity}
+        )
+        
         if not created:
             basket_item.quantity += quantity
             basket_item.save()
 
         serializer = BasketItemSerializer(basket_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     
     def put(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
         product_id = request.data.get('product_id')
         quantity = request.data.get('quantity')
+        color_id = request.data.get('color')
 
-        if not product_id or not quantity:
-            return Response({'error': 'Product ID and quantity are required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not product_id:
+            return Response({'error': 'Product ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Retrieve color if color_id is provided
+        color = None
+        if color_id:
+            try:
+                color = Color.objects.get(id=color_id)
+            except Color.DoesNotExist:
+                return Response({'error': 'Color not found'}, status=status.HTTP_404_NOT_FOUND)
+
         try:
             basket_item = BasketItem.objects.get(basket=basket, product=product)
-            basket_item.quantity = quantity
+            if quantity is not None:
+                basket_item.quantity = quantity
+            if color:  # Update color if provided
+                basket_item.color = color
             basket_item.save()
         except BasketItem.DoesNotExist:
             return Response({'error': 'Basket item not found'}, status=status.HTTP_404_NOT_FOUND)
