@@ -1,15 +1,14 @@
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.contrib.auth import authenticate,login
+from rest_framework.authentication import TokenAuthentication
 from django.contrib.auth.password_validation import validate_password
 from home.models import Basket,Product,BasketItem,Color
 from django.contrib.auth import logout
 from rest_framework.permissions import IsAuthenticated,BasePermission,AllowAny
-from .serializers import CustomerSerializer,CustomerLoginSerializer,DashboardViewSerializer,BasketSerializer,BasketItemSerializer
+from .serializers import CustomerSerializer,CustomerLoginSerializer,DashboardViewSerializer,BasketSerializer,BasketItemSerializer,CustomerSerializer
 from .models import Customer
 from django.shortcuts import get_object_or_404
-from rest_framework.decorators import api_view, permission_classes
 from django.conf import settings
 import requests,secrets,os
 import json
@@ -76,8 +75,10 @@ from django.core.exceptions import ValidationError
 #             return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class SendOTPView(APIView):
+    permission_classes = [AllowAny]    
     
     def post(self, request, *args, **kwargs):
+        serializer = CustomerSerializer(data=request.data)
         phone_number = request.data.get('phone_number')
         password = request.data.get('password')
 
@@ -157,7 +158,9 @@ class SendOTPView(APIView):
             return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VerifyOTPAndCreateUserView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request, *args, **kwargs):
+        serializer = CustomerSerializer(data=request.data)
         phone_number = request.data.get('phone_number')
         otp = request.data.get('otp')
         
@@ -213,6 +216,7 @@ class VerifyOTPAndCreateUserView(APIView):
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
+    
 
     def post(self, request):
         logout(request)
@@ -232,7 +236,6 @@ class LoginView(APIView):
             # Manually retrieve the user based on phone number
             try:
                 user = Customer.objects.get(phone_number=phone_number)
-                baskets = Basket.objects.get(customer=user)
 
             except Customer.DoesNotExist:
                 return Response({'error': 'کاربری با این شماره موبایل یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
@@ -240,22 +243,31 @@ class LoginView(APIView):
             # Check if the password is correct
             if user.check_password(password):
                 if user.is_active:
+                    # Get or create a basket for the user
+                    basket, created = Basket.objects.get_or_create(customer=user)
+
+                    # Get or create the token
                     token, _ = Token.objects.get_or_create(user=user)
                     return Response({
                         'token': token.key,
                         'phone_number': user.phone_number,
                         'first_name': user.first_name,
-                        'last_name':user.last_name,
-                        'post_Code':user.post_Code,
-                        'address':user.address,
-                        'BasketID':baskets.id,
-                        }, status=status.HTTP_200_OK)
+                        'last_name': user.last_name,
+                        'post_Code': user.post_Code,
+                        'address': user.address,
+                        'BasketID': basket.id,  # Use the newly created or existing basket ID
+                    }, status=status.HTTP_200_OK)
+                try:
+                    basket = Basket.objects.get(customer=user)
+                except Basket.DoesNotExist:
+                    return Response({'message': 'No basket found for this user.'}, status=status.HTTP_404_NOT_FOUND)
                 else:
                     return Response({'error': 'حساب کاربری شما غیرفعال است'}, status=status.HTTP_403_FORBIDDEN)
             else:
                 return Response({'error': 'شماره موبایل یا پسورد اشتباه است'}, status=status.HTTP_401_UNAUTHORIZED)
     
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     
 
 class IsAdminUser(BasePermission):
@@ -318,13 +330,13 @@ class BasketListCreateView(APIView):
 
 class BasketItemCreateView(APIView):
     permission_classes = [IsAuthenticated]
-
+    authentication_classes = [TokenAuthentication]
     def get(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
         basket_items = BasketItem.objects.filter(basket=basket, peyment=False)
         serializer = BasketSerializer(basket, context={'peyment': False})
         return Response(serializer.data)
-    
+
     def post(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
         color_id = request.data.get('color')  # Make sure this is 'color_id' in your request data
@@ -443,6 +455,7 @@ class PaymentRequestView(APIView):
             return Response({'error': f'An error occurred: {err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class PaymentVerifyView(APIView):
+    
     permission_classes = [IsAuthenticated]
 
     def get(self, request, basket_id):

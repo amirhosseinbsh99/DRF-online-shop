@@ -9,17 +9,19 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from accounts.views import IsAdminUser
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from django.db.models import Q
 
 
 class ProductPagination(pagination.PageNumberPagination):
+    permission_classes = [AllowAny] 
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 100
 
 
 class ProductViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny] 
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     lookup_field = 'slug'  
@@ -27,12 +29,14 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 class ProductsByCategory(APIView):
+    permission_classes = [AllowAny] 
     def get(self, request, category_id):
         products = Product.objects.filter(category_id=category_id)
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class ProductsByColor(APIView):
+    permission_classes = [AllowAny] 
     def get(self, request, color_id):
         colors = Product.objects.filter(colors=color_id)
         serializer = ProductSerializer(colors, many=True)
@@ -40,6 +44,7 @@ class ProductsByColor(APIView):
 
 
 class HomeView(ListAPIView):
+    permission_classes = [AllowAny] 
     serializer_class = ProductSerializer
 
     def get(self, request):
@@ -64,6 +69,7 @@ class HomeView(ListAPIView):
 
 
 class ProductFilter(filters.FilterSet):
+    permission_classes = [AllowAny] 
     category = filters.ModelChoiceFilter(queryset=Category.objects.all())
     price = filters.RangeFilter()
     size = filters.ChoiceFilter(choices=lambda: [(size, size) for size in Product.objects.values_list('size', flat=True).distinct()])
@@ -80,6 +86,8 @@ class ProductFilter(filters.FilterSet):
 
 
 class ProductSearchView(ListAPIView):
+    permission_classes = [AllowAny]      
+
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     filter_backends = [drf_filters.SearchFilter, DjangoFilterBackend]
@@ -87,7 +95,8 @@ class ProductSearchView(ListAPIView):
     filterset_class = ProductFilter  
 
 class ProductListAdmin(APIView):
-    # permission_classes = [IsAdminUser]
+    #permission_classes = [IsAdminUser]
+    permission_classes = [AllowAny] 
 
     def get(self, request):
         products = Product.objects.all()
@@ -97,7 +106,7 @@ class ProductListAdmin(APIView):
 
 class ProductListCreateAdmin(APIView):
 
-    # permission_classes = [IsAdminUser]
+    #permission_classes = [IsAdminUser]
     def post(self, request):
         serializer = ProductSerializer(data=request.data, context={'request': request})
         
