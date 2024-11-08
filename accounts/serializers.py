@@ -46,7 +46,7 @@ class CustomerLoginSerializer(serializers.Serializer):
         if len(value) < 8:
             raise serializers.ValidationError("پسورد باید 8 رقمی باشد")
         return value
-
+    
 class DashboardViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer

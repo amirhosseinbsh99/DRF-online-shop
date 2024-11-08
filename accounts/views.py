@@ -11,6 +11,7 @@ from .models import Customer
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 import requests,secrets,os
+from rest_framework_simplejwt.tokens import RefreshToken
 import json
 from django.utils import timezone
 from datetime import timedelta
@@ -233,39 +234,32 @@ class LoginView(APIView):
             phone_number = serializer.validated_data['phone_number']
             password = serializer.validated_data['password']
             
-            # Manually retrieve the user based on phone number
             try:
                 user = Customer.objects.get(phone_number=phone_number)
-
+                
+                if user.check_password(password):
+                    if user.is_active:
+                        # Generate JWT tokens
+                        refresh = RefreshToken.for_user(user)
+                        
+                        # Return JWT tokens and user data
+                        return Response({
+                            'refresh': str(refresh),
+                            'access': str(refresh.access_token),
+                            'phone_number': user.phone_number,
+                            'first_name': user.first_name,
+                            'last_name': user.last_name,
+                            'post_Code': user.post_Code,
+                            'address': user.address,
+                        }, status=status.HTTP_200_OK)
+                    else:
+                        return Response({'error': 'حساب کاربری شما غیرفعال است'}, status=status.HTTP_403_FORBIDDEN)
+                else:
+                    return Response({'error': 'شماره موبایل یا پسورد اشتباه است'}, status=status.HTTP_401_UNAUTHORIZED)
+                    
             except Customer.DoesNotExist:
                 return Response({'error': 'کاربری با این شماره موبایل یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
-
-            # Check if the password is correct
-            if user.check_password(password):
-                if user.is_active:
-                    # Get or create a basket for the user
-                    basket, created = Basket.objects.get_or_create(customer=user)
-
-                    # Get or create the token
-                    token, _ = Token.objects.get_or_create(user=user)
-                    return Response({
-                        'token': token.key,
-                        'phone_number': user.phone_number,
-                        'first_name': user.first_name,
-                        'last_name': user.last_name,
-                        'post_Code': user.post_Code,
-                        'address': user.address,
-                        'BasketID': basket.id,  # Use the newly created or existing basket ID
-                    }, status=status.HTTP_200_OK)
-                try:
-                    basket = Basket.objects.get(customer=user)
-                except Basket.DoesNotExist:
-                    return Response({'message': 'No basket found for this user.'}, status=status.HTTP_404_NOT_FOUND)
-                else:
-                    return Response({'error': 'حساب کاربری شما غیرفعال است'}, status=status.HTTP_403_FORBIDDEN)
-            else:
-                return Response({'error': 'شماره موبایل یا پسورد اشتباه است'}, status=status.HTTP_401_UNAUTHORIZED)
-    
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     
