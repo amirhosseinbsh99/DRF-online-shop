@@ -1,7 +1,8 @@
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.authentication import TokenAuthentication
+#from rest_framework.authentication import TokenAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.password_validation import validate_password
 from home.models import Basket,Product,BasketItem,Color
 from django.contrib.auth import logout
@@ -324,7 +325,8 @@ class BasketListCreateView(APIView):
 
 class BasketItemCreateView(APIView):
     permission_classes = [IsAuthenticated]
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [JWTAuthentication]
+
     def get(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
         basket_items = BasketItem.objects.filter(basket=basket, peyment=False)
@@ -335,7 +337,7 @@ class BasketItemCreateView(APIView):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
         color_id = request.data.get('color')  # Make sure this is 'color_id' in your request data
         product_id = request.data.get('product_id')
-        quantity = request.data.get('quantity', 1)
+        quantity = int(request.data.get('quantity', 1))
         
         try:
             product = Product.objects.get(id=product_id)
@@ -404,7 +406,8 @@ class BasketItemCreateView(APIView):
 
 class PaymentRequestView(APIView):
     permission_classes = [IsAuthenticated]
-
+    authentication_classes = [JWTAuthentication]
+    
     def get(self, request, basket_id):
         customer = request.user
         basket = get_object_or_404(Basket, id=basket_id, customer=customer)
