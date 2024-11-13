@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 #from rest_framework.authentication import TokenAuthentication
+
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.password_validation import validate_password
 from home.models import Basket,Product,BasketItem,Color
@@ -265,11 +266,7 @@ class LoginView(APIView):
 
     
 
-class IsAdminUser(BasePermission):
-    def has_permission(self, request, view):
-        # Check if the user is authenticated and is an admin
-        return bool(request.user and request.user.is_authenticated and request.user.is_admin)
-    
+
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
 

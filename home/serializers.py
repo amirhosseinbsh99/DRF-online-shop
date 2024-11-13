@@ -66,6 +66,11 @@ class ProductSerializer(serializers.ModelSerializer):
             
         ]
 
+class ProductCheckboxSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['checkbox']  # Only include 'checkbox' field to update
+    
     
 class CategorySerializer(serializers.ModelSerializer):
     parent_id = serializers.IntegerField(source='parent.id', read_only=True)  # Show parent id

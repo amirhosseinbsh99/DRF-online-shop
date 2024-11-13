@@ -3,22 +3,30 @@ from rest_framework.views import APIView
 from rest_framework import status,viewsets,pagination
 from rest_framework.generics import ListAPIView
 from .models import Product,Category,Color
-from .serializers import ProductSerializer,CategorySerializer,ColorSerializer
+from accounts.permissions import IsCustomAdminUser
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from .serializers import ProductSerializer,CategorySerializer,ColorSerializer,ProductCheckboxSerializer
 from rest_framework import filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
-from accounts.views import IsAdminUser
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from django.db.models import Q
-
+from django.db.models import Min, Max
 
 class ProductPagination(pagination.PageNumberPagination):
     permission_classes = [AllowAny] 
-    page_size = 20
+    page_size = 24
     page_size_query_param = 'page_size'
     max_page_size = 100
-
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.page.paginator.count,
+            'next': self.get_next_link(),  # Automatically generates the next page link
+            'previous': self.get_previous_link(),  # Automatically generates the previous page link
+            'results': data
+        })
 
 class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny] 
@@ -65,8 +73,6 @@ class HomeView(ListAPIView):
             'pants': pants_serializer.data
         })
 
-   
-
 
 class ProductFilter(filters.FilterSet):
     permission_classes = [AllowAny] 
@@ -82,7 +88,7 @@ class ProductFilter(filters.FilterSet):
         fields = ['category', 'price', 'size', 'color']
 
     def filter_by_color(self, queryset, name, value):
-        return queryset.filter(color__icontains=value)
+        return queryset.filter(colors__name__icontains=value)
 
 
 class ProductSearchView(ListAPIView):
@@ -91,12 +97,37 @@ class ProductSearchView(ListAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     filter_backends = [drf_filters.SearchFilter, DjangoFilterBackend]
-    search_fields = ['name', 'category__title', 'price', 'size', 'color']
+    # Use the correct lookup for filtering by colors (through the ManyToMany relation)
+    search_fields = ['name', 'category__title', 'price', 'size', 'colors__name']
     filterset_class = ProductFilter  
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Calculate min and max prices for the filtered queryset
+        min_price = queryset.aggregate(Min('price'))['price__min']
+        max_price = queryset.aggregate(Max('price'))['price__max']
+
+        # Serialize the filtered products
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response({
+                'min_price': min_price,
+                'max_price': max_price,
+                'products': serializer.data
+            })
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'min_price': min_price,
+            'max_price': max_price,
+            'products': serializer.data
+        }, status=status.HTTP_200_OK)
 
 class ProductListAdmin(APIView):
     #permission_classes = [IsAdminUser]
-    permission_classes = [AllowAny] 
+    authentication_classes = [JWTAuthentication]
 
     def get(self, request):
         products = Product.objects.all()
@@ -105,8 +136,9 @@ class ProductListAdmin(APIView):
     
 
 class ProductListCreateAdmin(APIView):
-
+    authentication_classes = [JWTAuthentication]
     #permission_classes = [IsAdminUser]
+
     def post(self, request):
         serializer = ProductSerializer(data=request.data, context={'request': request})
         
@@ -128,8 +160,31 @@ class ProductListCreateAdmin(APIView):
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
     
-        
+    
+class ProductAdmin(APIView):
+    permission_classes = [IsCustomAdminUser]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        selected_product_ids = request.data.get('selected_products', [])
+
+        # Step 1: Uncheck all products
+        Product.objects.update(checkbox=False)
+
+        # Step 2: Check the selected products
+        if selected_product_ids:
+            Product.objects.filter(id__in=selected_product_ids).update(checkbox=True)
+
+        return Response({"success": "Products updated successfully."})
+
+    def get(self, request):
+        products = Product.objects.order_by('-created_at')
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data)
+
+
 class ProductDetailAdmin(APIView):
+    authentication_classes = [JWTAuthentication]
 
     def get_object(self, id):
         return get_object_or_404(Product.objects.prefetch_related('colors'), id=id)
@@ -156,6 +211,7 @@ class ProductDetailAdmin(APIView):
 
 class ProductSearchAdmin(APIView):
     # permission_classes = [IsAdminUser]
+    authentication_classes = [JWTAuthentication]
 
     def get(self, request):
         query = request.query_params.get('q', None)
@@ -169,6 +225,7 @@ class ProductSearchAdmin(APIView):
         #http://127.0.0.1:8000/padmin/search/?q=nike
         
 class CategoryAdmin(APIView):
+    authentication_classes = [JWTAuthentication]
     # permission_classes = [IsAdminUser]
     def post(self, request):
         data = request.data
@@ -187,6 +244,7 @@ class CategoryAdmin(APIView):
 
 
 class CategoryDetailAdmin(APIView):
+    authentication_classes = [JWTAuthentication]
     # permission_classes = [IsAdminUser]
 
     def get(self, request, id):
@@ -222,6 +280,7 @@ class CategoryDetailAdmin(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ColorAdmin(APIView):
+    authentication_classes = [JWTAuthentication]
     # permission_classes = [IsAdminUser]
     def post(self, request):
         data = request.data
@@ -240,6 +299,7 @@ class ColorAdmin(APIView):
 
 class ColorDetailAdmin(APIView):
     # permission_classes = [IsAdminUser]
+    authentication_classes = [JWTAuthentication]
 
     def get_object(self, id):
         try:

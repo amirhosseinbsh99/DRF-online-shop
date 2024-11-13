@@ -62,10 +62,6 @@ ZP_PAYMENT_GATEWAY_URL = 'https://sandbox.zarinpal.com/pg/StartPay/'
 ZARINPAL_CALLBACK_URL = 'http://127.0.0.1:8000/accounts/basket/{basket_id}/verify/'
 ZP_API_VERIFY = "https://sandbox.zarinpal.com/pg/rest/WebGate/PaymentVerification.json"
 
-# ZARINPAL_MERCHANT_ID = '15480d82-6f8f-43d8-8366-3935a0dc294c'  # Replace with your actual merchant ID
-# ZARINPAL_CALLBACK_URL = 'http://127.0.0.1:8000/accounts/basket/<int:basket_id>/verify/'  # Replace with your actual callback URL
-
-
 
 # ZP_API_REQUEST = f"https://{sandbox}.zarinpal.com/pg/rest/WebGate/PaymentRequest.json"
 # ZP_API_VERIFY = f"https://{sandbox}.zarinpal.com/pg/rest/WebGate/PaymentVerification.json"
@@ -86,6 +82,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -95,9 +92,6 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ),
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.SessionAuthentication',
-    )
     
     
 }
@@ -216,7 +210,7 @@ LOGGING = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Set token expiry as desired
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=500),  # Set token expiry as desired
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,

@@ -27,6 +27,7 @@ class Product(models.Model):
     description = models.TextField()
     model_number = models.CharField(max_length=100, null=True, blank=True)
     available = models.BooleanField(default=True)
+    checkbox = models.BooleanField(default=False)
     price = models.IntegerField()
     stock = models.PositiveIntegerField()
     colors = models.ManyToManyField(Color, blank=True)  
@@ -52,6 +53,7 @@ class Product(models.Model):
         if not self.slug:
             self.slug = slugify(self.name.replace(" ", "-"), allow_unicode=True)
         super().save(*args, **kwargs)
+
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)
