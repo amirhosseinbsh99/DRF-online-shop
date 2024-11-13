@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 #from rest_framework.authentication import TokenAuthentication
-
+from .OTP import generate_and_send_otp,verify_otp  
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.password_validation import validate_password
 from home.models import Basket,Product,BasketItem,Color
@@ -78,87 +78,138 @@ from django.core.exceptions import ValidationError
 #             return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class SendOTPView(APIView):
-    permission_classes = [AllowAny]    
-    
+    permission_classes = [AllowAny]
+
     def post(self, request, *args, **kwargs):
-        serializer = CustomerSerializer(data=request.data)
         phone_number = request.data.get('phone_number')
         password = request.data.get('password')
 
         if not phone_number:
             return Response({"error": "Phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         if not password:
             return Response({"error": "Password is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             # Check if a customer exists
             customer = Customer.objects.filter(phone_number=phone_number).first()
 
-            
-                
-            
-            # If customer exists, check if the OTP is expired or if the last request was within the allowed time frame
             if customer:
+                # Handle existing customer who is inactive or waiting for OTP verification
                 if customer.is_active:
                     return Response({"error": "این شماره قبلا در سیستم ثبت شده است"}, status=status.HTTP_400_BAD_REQUEST)
                 
+                # If the customer’s OTP request has expired
                 if timezone.now() > customer.created_at + timedelta(minutes=2):
-                    # If expired, delete the customer
                     customer.delete()
                     print(f"Deleted expired user with phone number: {phone_number}")
+                    customer = None  # Reset customer to None for recreation below
                 else:
-                    # Check the last OTP request time
+                    # Check for recent OTP request to enforce rate limiting
                     if customer.last_otp_request and timezone.now() < customer.last_otp_request + timedelta(minutes=2):
-                        remaining_time = (customer.last_otp_request + timedelta(minutes=1) - timezone.now()).total_seconds()
+                        remaining_time = (customer.last_otp_request + timedelta(minutes=2) - timezone.now()).total_seconds()
                         return Response({"error": f"لطفا {int(remaining_time)} ثانیه صبر کنید"}, status=status.HTTP_429_TOO_MANY_REQUESTS)
-            else:
-                customer = Customer(phone_number=phone_number)    
-            try:
-                validate_password(password)  # Django's built-in password validation
-                customer.set_password(password)  # Hash and save the password
-                customer.save()  # Ensure to save the object
-            except ValidationError as e:
-                return Response({"error": f"Password is invalid: {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Disable OTP sending logic for testing
-            test_mode = getattr(settings, 'OTP_TEST_MODE', False)
-            if test_mode:
-                otp = 12345  # Static OTP for testing
-                print(f"Test mode enabled. Generated static OTP: {otp}")
-            else:
-                # Generate secure OTP
-                otp = secrets.randbelow(90000) + 10000
-                print(f"Generated OTP: {otp}")
-
-                # Send OTP via Kavenegar (only in non-test mode)
-                api_key = settings.KAVENEGAR_API_KEY
-                if not api_key:
-                    return Response({"error": "Kavenegar API key is missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
-                api = KavenegarAPI(api_key)
-                params = {
-                    'token': otp,
-                    'receptor': phone_number,
-                    'template': 'verify',
-                    'type': 'sms'
-                }
-
-                response = api.verify_lookup(params)
-                print(f"Kavenegar response: {response}")
-
-            # Save or update OTP on the Customer model
-            customer, created = Customer.objects.get_or_create(phone_number=phone_number)
-            customer.token_send = otp
-            customer.created_at = timezone.now()  # Update the created_at time to now
-            customer.last_otp_request = timezone.now()  # Update the last OTP request time
-            customer.save()
-
-            return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
+            # Create a new customer instance if none exists or was deleted
+            if not customer:
+                customer = Customer(phone_number=phone_number)
+            
+            try:
+                validate_password(password)
+                customer.set_password(password)
+                # Send OTP only if the request is not rate-limited
+                generate_and_send_otp(customer, purpose="signup")
+                customer.last_otp_request = timezone.now()  # Update OTP request time
+                customer.save()
+                return Response({"message": "OTP sent for signup"}, status=status.HTTP_200_OK)
+            except ValidationError as e:
+                return Response({"error": f"Password invalid: {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             print(f"Unexpected error: {e}")
             return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # permission_classes = [AllowAny]    
+    
+    # def post(self, request, *args, **kwargs):
+    #     serializer = CustomerSerializer(data=request.data)
+    #     phone_number = request.data.get('phone_number')
+    #     password = request.data.get('password')
+
+    #     if not phone_number:
+    #         return Response({"error": "Phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    #     if not password:
+    #         return Response({"error": "Password is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    #     try:
+    #         # Check if a customer exists
+    #         customer = Customer.objects.filter(phone_number=phone_number).first()
+
+            
+                
+            
+    #         # If customer exists, check if the OTP is expired or if the last request was within the allowed time frame
+    #         if customer:
+    #             if customer.is_active:
+    #                 return Response({"error": "این شماره قبلا در سیستم ثبت شده است"}, status=status.HTTP_400_BAD_REQUEST)
+                
+    #             if timezone.now() > customer.created_at + timedelta(minutes=2):
+    #                 # If expired, delete the customer
+    #                 customer.delete()
+    #                 print(f"Deleted expired user with phone number: {phone_number}")
+    #             else:
+    #                 # Check the last OTP request time
+    #                 if customer.last_otp_request and timezone.now() < customer.last_otp_request + timedelta(minutes=2):
+    #                     remaining_time = (customer.last_otp_request + timedelta(minutes=1) - timezone.now()).total_seconds()
+    #                     return Response({"error": f"لطفا {int(remaining_time)} ثانیه صبر کنید"}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+    #         else:
+    #             customer = Customer(phone_number=phone_number)    
+    #         try:
+    #             validate_password(password)  # Django's built-in password validation
+    #             customer.set_password(password)  # Hash and save the password
+    #             customer.save()  # Ensure to save the object
+    #         except ValidationError as e:
+    #             return Response({"error": f"Password is invalid: {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
+            
+    #         # Disable OTP sending logic for testing
+    #         test_mode = getattr(settings, 'OTP_TEST_MODE', False)
+    #         if test_mode:
+    #             otp = 12345  # Static OTP for testing
+    #             print(f"Test mode enabled. Generated static OTP: {otp}")
+    #         else:
+    #             # Generate secure OTP
+    #             otp = secrets.randbelow(90000) + 10000
+    #             print(f"Generated OTP: {otp}")
+
+    #             # Send OTP via Kavenegar (only in non-test mode)
+    #             api_key = settings.KAVENEGAR_API_KEY
+    #             if not api_key:
+    #                 return Response({"error": "Kavenegar API key is missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+    #             api = KavenegarAPI(api_key)
+    #             params = {
+    #                 'token': otp,
+    #                 'receptor': phone_number,
+    #                 'template': 'verify',
+    #                 'type': 'sms'
+    #             }
+
+    #             response = api.verify_lookup(params)
+    #             print(f"Kavenegar response: {response}")
+
+    #         # Save or update OTP on the Customer model
+    #         customer, created = Customer.objects.get_or_create(phone_number=phone_number)
+    #         customer.token_send = otp
+    #         customer.created_at = timezone.now()  # Update the created_at time to now
+    #         customer.last_otp_request = timezone.now()  # Update the last OTP request time
+    #         customer.save()
+
+    #         return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
+
+    #     except Exception as e:
+    #         print(f"Unexpected error: {e}")
+    #         return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VerifyOTPAndCreateUserView(APIView):
     permission_classes = [AllowAny]
@@ -215,7 +266,84 @@ class VerifyOTPAndCreateUserView(APIView):
             print(f"Unexpected error: {e}")
             return Response({"error": "Failed to verify OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class SendPasswordResetOTPView(APIView):
+    permission_classes = [AllowAny]
 
+    def post(self, request, *args, **kwargs):
+        phone_number = request.data.get('phone_number')
+
+        if not phone_number:
+            return Response({"error": "Phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Check if customer exists
+            customer = Customer.objects.filter(phone_number=phone_number).first()
+            if not customer:
+                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Rate limiting: ensure OTP isn't sent too frequently
+            if customer.last_otp_request and timezone.now() < customer.last_otp_request + timedelta(minutes=2):
+                remaining_time = (customer.last_otp_request + timedelta(minutes=2) - timezone.now()).total_seconds()
+                return Response(
+                    {"error": f"Please wait {int(remaining_time)} seconds before requesting another OTP"},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+
+            # Generate and send OTP
+            generate_and_send_otp(customer, purpose="password_reset")
+            
+            # Update the OTP request timestamp
+            customer.last_otp_request = timezone.now()
+            customer.save()
+
+            return Response({"message": "OTP sent for password reset"}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class VerifyPasswordResetOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        phone_number = request.data.get('phone_number')
+        otp_code = request.data.get('otp_code')
+        new_password = request.data.get('new_password')
+
+        if not phone_number or not otp_code or not new_password:
+            return Response(
+                {"error": "Phone number, OTP code, and new password are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Check if customer exists
+            customer = Customer.objects.filter(phone_number=phone_number).first()
+            if not customer:
+                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Verify OTP
+            is_valid = verify_otp(customer, otp_code, purpose="password_reset")
+            
+            
+            if not is_valid:
+                
+                return Response({"error": "Invalid or expired OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Reset the password if OTP is valid
+            try:
+                validate_password(new_password)  # Django's built-in password validation
+                customer.set_password(new_password)  # Hash and save the password
+                customer.save()  # Ensure to save the object
+                return Response({"message": "password is chaneged"}, status=status.HTTP_200_OK)
+            except ValidationError as e:
+                return Response({"error": f"Password is invalid: {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return Response({"error": "Failed to verify OTP and reset password"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
