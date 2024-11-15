@@ -1,12 +1,13 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-
 from django.dispatch import receiver
 from django.db.models.signals import post_save
 from django.conf import settings
 from rest_framework.authtoken.models import Token
 
+
 class Customer(AbstractUser):
+
     phone_number = models.CharField(max_length=11, unique=True)
     first_name = models.CharField(max_length=50)
     last_name =models.CharField(max_length=50 )
@@ -17,10 +18,17 @@ class Customer(AbstractUser):
     last_otp_request = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=False)   
     address = models.CharField(max_length=255)
+    national_code = models.CharField(max_length=50)
+
 
     def save(self, *args, **kwargs):
-        # Set the username to be the same as the phone_number
-        self.username = self.phone_number
+        # Automatically set is_active to True if the user is a superuser
+        if self.is_superuser:
+            self.is_active = True
+        else:
+            # Only set the username to phone_number for regular users
+            self.username = self.phone_number
+
         super().save(*args, **kwargs)
 
     def __str__(self):

@@ -85,10 +85,10 @@ class SendOTPView(APIView):
         password = request.data.get('password')
 
         if not phone_number:
-            return Response({"error": "Phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "شماره تلفن الزامی است"}, status=status.HTTP_400_BAD_REQUEST)
 
         if not password:
-            return Response({"error": "Password is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "رمز عبور الزامی است"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             # Check if a customer exists
@@ -100,7 +100,7 @@ class SendOTPView(APIView):
                     return Response({"error": "این شماره قبلا در سیستم ثبت شده است"}, status=status.HTTP_400_BAD_REQUEST)
                 
                 # If the customer’s OTP request has expired
-                if timezone.now() > customer.created_at + timedelta(minutes=2):
+                if timezone.now() > customer.created_at + timedelta(seconds=30):
                     customer.delete()
                     print(f"Deleted expired user with phone number: {phone_number}")
                     customer = None  # Reset customer to None for recreation below
@@ -121,13 +121,14 @@ class SendOTPView(APIView):
                 generate_and_send_otp(customer, purpose="signup")
                 customer.last_otp_request = timezone.now()  # Update OTP request time
                 customer.save()
-                return Response({"message": "OTP sent for signup"}, status=status.HTTP_200_OK)
+                return Response({"message": "کد تایید برای ثبت‌نام ارسال شد"}, status=status.HTTP_200_OK)
             except ValidationError as e:
-                return Response({"error": f"Password invalid: {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": f"رمز عبور نامعتبر است: {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             print(f"Unexpected error: {e}")
-            return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "ارسال کد تایید با شکست مواجه شد"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     # permission_classes = [AllowAny]    
     
@@ -536,8 +537,7 @@ class PaymentRequestView(APIView):
     def get(self, request, basket_id):
         customer = request.user
         basket = get_object_or_404(Basket, id=basket_id, customer=customer)
-
-        basket_items = BasketItem.objects.filter(basket=basket, peyment = False)
+        basket_items = BasketItem.objects.filter(basket=basket, peyment=False)
         
         if not basket_items.exists():
             return Response({'error': 'Basket is empty'}, status=status.HTTP_400_BAD_REQUEST)
@@ -549,21 +549,22 @@ class PaymentRequestView(APIView):
         total_amount = sum(item.product.price * item.quantity for item in basket_items)
 
         data = {
-            "MerchantID": settings.ZARINPAL_MERCHANT_ID,
-            "Amount": total_amount,  
-            "CallbackURL": settings.ZARINPAL_CALLBACK_URL.format(basket_id=basket.id),
-            "Description": "Payment for items in basket",
+            "merchant_id": settings.ZARINPAL_MERCHANT_ID,
+            "amount": total_amount,
+            "callback_url": settings.ZARINPAL_CALLBACK_URL.format(basket_id=basket.id),
+            "description": "Payment for items in basket",
         }
         data = json.dumps(data)
-        headers = {'content-type': 'application/json', 'content-length': str(len(data))}
+        headers = {'content-type': 'application/json'}
 
         try:
             response = requests.post(settings.ZP_API_PAYMENT_REQUEST, data=data, headers=headers)
             response.raise_for_status()
             response_data = response.json()
 
-            if response_data['Status'] == 100:
-                payment_url = settings.ZP_PAYMENT_GATEWAY_URL + response_data['Authority']
+            if response_data.get('data', {}).get('code') == 100:
+                authority = response_data['data']['authority']
+                payment_url = settings.ZP_PAYMENT_GATEWAY_URL + authority
                 return Response({'payment_url': payment_url})
             else:
                 return Response({'error': 'Failed to generate payment link'}, status=status.HTTP_400_BAD_REQUEST)
@@ -575,9 +576,8 @@ class PaymentRequestView(APIView):
             return Response({'error': f'HTTP error occurred: {http_err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as err:
             return Response({'error': f'An error occurred: {err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
 class PaymentVerifyView(APIView):
-    
     permission_classes = [IsAuthenticated]
 
     def get(self, request, basket_id):
@@ -585,7 +585,7 @@ class PaymentVerifyView(APIView):
         customer = request.user
         basket = get_object_or_404(Basket, id=basket_id, customer=customer)
 
-        # Calculate the total amount for all items in the basket
+        # Calculate total amount for all items in the basket
         basket_items = BasketItem.objects.filter(basket=basket)
         if not basket_items.exists():
             return Response({'status': False, 'code': 'Basket is empty'}, status=status.HTTP_400_BAD_REQUEST)
@@ -593,23 +593,23 @@ class PaymentVerifyView(APIView):
         total_amount = sum(item.product.price * item.quantity for item in basket_items)
 
         data = {
-            "MerchantID": settings.ZARINPAL_MERCHANT_ID,
-            "Amount": total_amount,  # Rial / Required
-            "Authority": authority,
+            "merchant_id": settings.ZARINPAL_MERCHANT_ID,
+            "amount": total_amount,  
+            "authority": authority,
         }
         data = json.dumps(data)
-        headers = {'content-type': 'application/json', 'content-length': str(len(data))}
+        headers = {'content-type': 'application/json'}
 
         try:
             response = requests.post(settings.ZP_API_VERIFY, data=data, headers=headers)
             response.raise_for_status()
             response_data = response.json()
 
-            if response_data['Status'] == 100:
-                # Payment was successful
-                ref_id = response_data['RefID']
+            if response_data.get('data', {}).get('code') == 100:
+                # Payment successful
+                ref_id = response_data['data']['ref_id']
                 
-                # Update stock quantity and clear the basket
+                # Update stock quantity and mark items as paid
                 for item in basket_items:
                     product = item.product
                     if product.stock >= item.quantity:
@@ -618,26 +618,25 @@ class PaymentVerifyView(APIView):
                         product.save()
                         item.save()
                     else:
-                        return Response({'status': False, 'code': 'Insufficient stock for one or more products'}, status=status.HTTP_400_BAD_REQUEST)
+                        return Response({'status': False, 'code': 'Insufficient stock'}, status=status.HTTP_400_BAD_REQUEST)
                 
-                # Optionally clear the basket after successful purchase
-                
-
                 return Response({'status': True, 'RefID': ref_id}, status=status.HTTP_200_OK)
             else:
-                return Response({'status': False, 'code': str(response_data['Status'])}, status=status.HTTP_400_BAD_REQUEST)
+                error_code = response_data.get('errors', {}).get('code', 'Unknown error')
+                return Response({'status': False, 'code': str(error_code)}, status=status.HTTP_400_BAD_REQUEST)
         except requests.exceptions.Timeout:
             return Response({'status': False, 'code': 'timeout'}, status=status.HTTP_504_GATEWAY_TIMEOUT)
         except requests.exceptions.ConnectionError:
             return Response({'status': False, 'code': 'connection error'}, status=status.HTTP_502_BAD_GATEWAY)
         except requests.exceptions.HTTPError as http_err:
-            return Response({'status': False, 'code': f'HTTP error occurred: {http_err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'status': False, 'code': f'HTTP error: {http_err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as err:
-            return Response({'status': False, 'code': f'An error occurred: {err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'status': False, 'code': f'Error: {err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class OrderHistoryView(APIView):
     permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
     def get(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)

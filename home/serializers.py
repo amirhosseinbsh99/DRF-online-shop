@@ -28,14 +28,36 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
-    colors = ColorSerializer(many=True, read_only=True)  # For displaying colors with name
-    color_ids = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True, write_only=True)  # For inputting color IDs
-    # average_rating = serializers.ReadOnlyField()
+    colors = ColorSerializer(many=True, read_only=True)
+    color_ids = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True, write_only=True)
+    thumbnail = serializers.ImageField(required=False)  # Separate thumbnail field
 
-    def validate_slug(self, value):
-        if not re.match(r'^[\w-]+$', value, re.UNICODE):
-            raise serializers.ValidationError('Enter a valid “slug” consisting of letters, numbers, underscores, or hyphens.')
-        return value
+    def create(self, validated_data):
+        colors_data = validated_data.pop('color_ids', [])
+        thumbnail = validated_data.pop('thumbnail', None)
+        product = Product.objects.create(**validated_data)
+        product.colors.set(colors_data)
+        
+        if thumbnail:
+            product.thumbnail = thumbnail
+            product.save()
+
+        # Handle the gallery images
+        request = self.context.get('request')
+        if request and request.FILES:
+            images_data = request.FILES.getlist('images')
+            for image_data in images_data:
+                ProductImage.objects.create(product=product, image=image_data)
+
+        return product
+
+    class Meta:
+        model = Product
+        fields = [
+            'id', 'category', 'name', 'brand', 'description', 'model_number',
+            'available', 'price', 'stock', 'colors', 'color_ids',
+            'size', 'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images',
+        ]
 
     # def validate_star_rating(self, value):
     #     if value < 0 or value > 5:

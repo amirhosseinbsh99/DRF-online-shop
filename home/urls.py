@@ -13,7 +13,7 @@ router.register(r'products', ProductViewSet)
 urlpatterns = [
         
         path('', HomeView.as_view(), name='ProductView'),
-        path('Search/', ProductSearchView.as_view(), name='ProductSearchView'),
+        path('search/', ProductSearchView.as_view(), name='ProductSearchView'),
         path('padmin/', ProductListCreateAdmin.as_view(), name='ProductAdmin'),
         path('padmin/product/', ProductAdmin.as_view(), name='ProductAdmin'),
         path('padmin/product/create/', ProductListCreateAdmin.as_view(), name='CreateProductAdmin'),

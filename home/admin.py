@@ -3,7 +3,7 @@ from .models import Category, Product,Basket, BasketItem,Color
 from accounts.models import Customer
 
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('phone_number', 'is_active', 'is_admin', 'created_at')
+    list_display = ('username','phone_number', 'is_active', 'is_admin', 'created_at')
 
 @admin.register(Color)
 class ColorAdmin(admin.ModelAdmin):

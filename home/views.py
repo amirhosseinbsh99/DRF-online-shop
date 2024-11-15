@@ -14,6 +14,7 @@ from rest_framework.permissions import IsAuthenticated,AllowAny
 from django.db.models import Q
 from django.db.models import Min, Max
 
+
 class ProductPagination(pagination.PageNumberPagination):
     permission_classes = [AllowAny] 
     page_size = 24
@@ -27,6 +28,7 @@ class ProductPagination(pagination.PageNumberPagination):
             'previous': self.get_previous_link(),  # Automatically generates the previous page link
             'results': data
         })
+
 
 class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny] 
@@ -43,6 +45,7 @@ class ProductsByCategory(APIView):
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+
 class ProductsByColor(APIView):
     permission_classes = [AllowAny] 
     def get(self, request, color_id):
@@ -142,10 +145,8 @@ class ProductListCreateAdmin(APIView):
     def post(self, request):
         serializer = ProductSerializer(data=request.data, context={'request': request})
         
-        # Extract the slug from the request data
         slug = request.data.get('slug')
         
-        # Check if the slug already exists
         if Product.objects.filter(slug=slug).exists():
             return Response({'error': 'Product with this slug already exists.'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -223,7 +224,8 @@ class ProductSearchAdmin(APIView):
             return Response({"error": "No search query provided"}, status=status.HTTP_400_BAD_REQUEST)
         
         #http://127.0.0.1:8000/padmin/search/?q=nike
-        
+
+
 class CategoryAdmin(APIView):
     authentication_classes = [JWTAuthentication]
     # permission_classes = [IsAdminUser]
@@ -279,6 +281,7 @@ class CategoryDetailAdmin(APIView):
         category.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class ColorAdmin(APIView):
     authentication_classes = [JWTAuthentication]
     # permission_classes = [IsAdminUser]
@@ -330,7 +333,7 @@ class ColorDetailAdmin(APIView):
         color = Color.objects.get(id=id)
         color.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-        
+
 
 class ShoeView(APIView):
 
@@ -346,7 +349,6 @@ class ShoeView(APIView):
         
         return Response(serializer.data)
 
-
     
 class ShirtView(APIView):
 
@@ -354,14 +356,15 @@ class ShirtView(APIView):
         category = Category.objects.filter(title__icontains="لباس").order_by('-created_date')
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
-    
+
+
 class PantsView(APIView):
 
     def get(self, request):
         category = Category.objects.filter(title__icontains="شلوار").order_by('-created_date')
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
-    
+
     
 # class RateProductView(APIView):
     

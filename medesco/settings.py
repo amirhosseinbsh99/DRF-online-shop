@@ -57,10 +57,10 @@ INSTALLED_APPS = [
 #     sandbox = 'www'
 
 ZARINPAL_MERCHANT_ID = '15480d82-6f8f-43d8-8366-3935a0dc294c'
-ZP_API_PAYMENT_REQUEST = "https://sandbox.zarinpal.com/pg/rest/WebGate/PaymentRequest.json"
+ZARINPAL_CALLBACK_URL = 'http://medesco.liara.run/accounts/basket/{basket_id}/verify/'
+ZP_API_PAYMENT_REQUEST = "https://sandbox.zarinpal.com/pg/v4/payment/request.json"
+ZP_API_VERIFY = "https://sandbox.zarinpal.com/pg/v4/payment/verify.json"
 ZP_PAYMENT_GATEWAY_URL = 'https://sandbox.zarinpal.com/pg/StartPay/'
-ZARINPAL_CALLBACK_URL = 'http://127.0.0.1:8000/accounts/basket/{basket_id}/verify/'
-ZP_API_VERIFY = "https://sandbox.zarinpal.com/pg/rest/WebGate/PaymentVerification.json"
 
 
 # ZP_API_REQUEST = f"https://{sandbox}.zarinpal.com/pg/rest/WebGate/PaymentRequest.json"

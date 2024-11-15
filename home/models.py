@@ -36,6 +36,8 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     slug = models.SlugField(unique=True, max_length=200, blank=True, allow_unicode=True)
+    thumbnail = models.ImageField(upload_to='product_thumbnails/', null=True, blank=True)
+
     # total_rating = models.IntegerField(default=0)
     # number_of_ratings = models.IntegerField(default=0)
     # star_rating = models.FloatField(default=0, validators=[MinValueValidator(0), MaxValueValidator(5)])
