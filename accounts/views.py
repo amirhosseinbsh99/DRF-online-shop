@@ -230,9 +230,12 @@ class VerifyOTPAndCreateUserView(APIView):
                 return Response({"error": "کاربر یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
 
             # Check if the OTP has expired (2 minutes)
-            if timezone.now() > customer.created_at + timedelta(minutes=2):
-                customer.delete()
-                return Response({"error": "OTP has expired. User deleted."}, status=status.HTTP_400_BAD_REQUEST)
+            if not customer.is_active:
+                if timezone.now() > customer.created_at + timedelta(seconds=30):
+                    customer.delete()
+                    return Response({"error": "OTP has expired. User deleted."}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"error": "اکانت شما قبلا فعال شده است"}, status=status.HTTP_400_BAD_REQUEST)
 
             if customer.token_send != int(otp):
                 return Response({"error": "کد تایید اشتباه است"}, status=status.HTTP_400_BAD_REQUEST)
@@ -283,8 +286,8 @@ class SendPasswordResetOTPView(APIView):
                 return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
             # Rate limiting: ensure OTP isn't sent too frequently
-            if customer.last_otp_request and timezone.now() < customer.last_otp_request + timedelta(minutes=2):
-                remaining_time = (customer.last_otp_request + timedelta(minutes=2) - timezone.now()).total_seconds()
+            if customer.last_otp_request and timezone.now() < customer.last_otp_request + timedelta(seconds=30):
+                remaining_time = (customer.last_otp_request + timedelta(seconds=30) - timezone.now()).total_seconds()
                 return Response(
                     {"error": f"Please wait {int(remaining_time)} seconds before requesting another OTP"},
                     status=status.HTTP_429_TOO_MANY_REQUESTS

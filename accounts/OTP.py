@@ -75,7 +75,7 @@ def verify_otp(customer, otp_code, purpose):
         return False  # OTP does not match
 
     # Check if OTP has expired (e.g., 5 minutes expiry)
-    if timezone.now() > otp_created_at + timedelta(minutes=2):
+    if timezone.now() > otp_created_at + timedelta(seconds=30):
         return False  # OTP expired
         
     

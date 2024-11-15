@@ -37,7 +37,7 @@ class ProductSerializer(serializers.ModelSerializer):
         thumbnail = validated_data.pop('thumbnail', None)
         product = Product.objects.create(**validated_data)
         product.colors.set(colors_data)
-        
+
         if thumbnail:
             product.thumbnail = thumbnail
             product.save()
@@ -59,6 +59,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'size', 'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images',
         ]
 
+    # STAR RATING IF NEEDED :D
     # def validate_star_rating(self, value):
     #     if value < 0 or value > 5:
     #         raise serializers.ValidationError("Star rating must be between 0 and 5.")
@@ -84,7 +85,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'category', 'name', 'brand', 'description', 'model_number',
             'available', 'price', 'stock', 'colors','color_ids',
-            'size', 'material', 'created_at', 'updated_at', 'slug', 'images',
+            'size', 'material', 'created_at', 'updated_at', 'slug', 'images','thumbnail'
             
         ]
 

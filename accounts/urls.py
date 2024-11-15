@@ -13,14 +13,13 @@ from accounts.views import (
     SendPasswordResetOTPView,
     VerifyPasswordResetOTPView
 )
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 app_name = 'account'
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login_view'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('signup/', SendOTPView.as_view(), name='signup'),
     path('signup/verify/', VerifyOTPAndCreateUserView.as_view(), name='verify_otp_and_create_user_view'),
     path('resetpassword', SendPasswordResetOTPView.as_view(), name='reset_password'),

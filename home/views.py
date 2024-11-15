@@ -55,7 +55,7 @@ class ProductsByColor(APIView):
 
 
 class HomeView(ListAPIView):
-    permission_classes = [AllowAny] 
+    permission_classes = [AllowAny]
     serializer_class = ProductSerializer
 
     def get(self, request):
@@ -78,7 +78,7 @@ class HomeView(ListAPIView):
 
 
 class ProductFilter(filters.FilterSet):
-    permission_classes = [AllowAny] 
+    permission_classes = [AllowAny]
     category = filters.ModelChoiceFilter(queryset=Category.objects.all())
     price = filters.RangeFilter()
     size = filters.ChoiceFilter(choices=lambda: [(size, size) for size in Product.objects.values_list('size', flat=True).distinct()])
@@ -95,7 +95,7 @@ class ProductFilter(filters.FilterSet):
 
 
 class ProductSearchView(ListAPIView):
-    permission_classes = [AllowAny]      
+    permission_classes = [AllowAny]
 
     queryset = Product.objects.all()
     serializer_class = ProductSerializer

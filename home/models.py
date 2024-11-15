@@ -41,7 +41,6 @@ class Product(models.Model):
     # total_rating = models.IntegerField(default=0)
     # number_of_ratings = models.IntegerField(default=0)
     # star_rating = models.FloatField(default=0, validators=[MinValueValidator(0), MaxValueValidator(5)])
-
     # @property
     # def average_rating(self):
     #     if self.number_of_ratings == 0:
