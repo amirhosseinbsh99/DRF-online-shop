@@ -6,6 +6,7 @@ from django.conf import settings
 from .models import Customer
 from kavenegar import *
 
+
 def generate_and_send_otp(customer, purpose):
     # Generate a 5-digit OTP
     otp = secrets.randbelow(90000) + 10000
@@ -78,5 +79,5 @@ def verify_otp(customer, otp_code, purpose):
     if timezone.now() > otp_created_at + timedelta(seconds=30):
         return False  # OTP expired
         
-    
+
     return True  # OTP is valid

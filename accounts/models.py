@@ -17,7 +17,6 @@ class Customer(AbstractUser):
     last_otp_request = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=False)   
     address = models.CharField(max_length=255)
-    national_code = models.CharField(max_length=50)
 
 
     def save(self, *args, **kwargs):

@@ -211,6 +211,7 @@ class SendOTPView(APIView):
     #     except Exception as e:
     #         print(f"Unexpected error: {e}")
     #         return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 class VerifyOTPAndCreateUserView(APIView):
     permission_classes = [AllowAny]
@@ -396,8 +397,6 @@ class LoginView(APIView):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    
-
 
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
@@ -409,7 +408,7 @@ class DashboardView(APIView):
         else:
             # If an id is provided, fetch the customer with that id
             customer = get_object_or_404(Customer, id=id)
-        
+
 
         customer.password=''
         # Serialize the customer data

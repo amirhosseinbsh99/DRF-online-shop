@@ -297,6 +297,13 @@ class CategoryDetailAdmin(APIView):
         category = get_object_or_404(Category, id=id)
         category.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class ColorsVeiw(APIView):
+    permission_classes = [AllowAny] 
+    def get(self, request):
+        color = Color.objects.all()
+        serializer = ColorSerializer(color, many=True)
+        return Response(serializer.data)
 
 
 class ColorAdmin(APIView):
