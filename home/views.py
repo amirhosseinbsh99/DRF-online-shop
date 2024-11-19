@@ -37,11 +37,26 @@ class ProductViewSet(viewsets.ModelViewSet):
     lookup_field = 'slug'  
     pagination_class = ProductPagination
 
+class AllCategories(APIView):
+    permission_classes = [AllowAny]
 
+    def get(self, request):
+        categories = Category.objects.all()  # Assuming you have a Category model
+        serializer = CategorySerializer(categories, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 class ProductsByCategory(APIView):
-    permission_classes = [AllowAny] 
-    def get(self, request, category_id):
-        products = Product.objects.filter(category_id=category_id)
+    permission_classes = [AllowAny]
+
+    def get(self, request, category_name):
+        try:
+            # Fetch the category by its title
+            category = Category.objects.get(title=category_name)
+        except Category.DoesNotExist:
+            return Response({"error": "Category not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Filter products by the retrieved category
+        products = Product.objects.filter(category=category)
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -127,6 +142,8 @@ class ProductSearchView(ListAPIView):
             'max_price': max_price,
             'products': serializer.data
         }, status=status.HTTP_200_OK)
+
+#====================admin=====================#
 
 class ProductListAdmin(APIView):
     #permission_classes = [IsAdminUser]
@@ -301,6 +318,7 @@ class ColorAdmin(APIView):
 
 
 class ColorDetailAdmin(APIView):
+    
     # permission_classes = [IsAdminUser]
     authentication_classes = [JWTAuthentication]
 
@@ -365,7 +383,7 @@ class PantsView(APIView):
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
 
-    
+    #if needed edit it and use it(product rating)
 # class RateProductView(APIView):
     
 #     # permission_classes = [IsAuthenticated]
