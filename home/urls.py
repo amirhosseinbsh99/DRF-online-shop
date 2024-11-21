@@ -8,6 +8,7 @@ from .views import (
     ProductSearchView,
     ProductAdmin,
     ProductDetailAdmin,
+    ProductsView,
     ColorAdmin,
     ColorDetailAdmin,
     CategoryAdmin,
@@ -48,9 +49,10 @@ urlpatterns = [
     # Admin category views
     path('padmin/category/', CategoryAdmin.as_view(), name='CategoryAdmin'),
     path('padmin/category/create/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
-    path('padmin/category/<int:id>/', CategoryDetailAdmin.as_view(), name='EditCategoryAdmin'),
+    path('padmin/category/<str:name>/', CategoryDetailAdmin.as_view(), name='EditCategoryAdmin'),
     
     # Products by category & color
+    path('products/', ProductViewSet.as_view({'get': 'list'}), name='products-list'),
     path('products/category/', AllCategories.as_view(), name='AllCategories'),
     path('products/category/<str:category_name>/', ProductsByCategory.as_view(), name='products-by-category'),
     path('products/color/', ColorsVeiw.as_view(), name='products-by-color'),
@@ -62,5 +64,4 @@ urlpatterns = [
     path('pants/', PantsView.as_view(), name='PantsView'),
     
     # Include the API router for product-related actions
-    path('api/', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

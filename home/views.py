@@ -37,6 +37,22 @@ class ProductViewSet(viewsets.ModelViewSet):
     lookup_field = 'slug'  
     pagination_class = ProductPagination
 
+class ProductListView(ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    pagination_class = ProductPagination
+
+
+class ProductsView(viewsets.ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    # Optional: Customize the list action
+    def list(self, request, *args, **kwargs):
+        queryset = Product.objects.filter(available=True)  # Only list available products
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
 class AllCategories(APIView):
     permission_classes = [AllowAny]
 
@@ -266,8 +282,9 @@ class CategoryDetailAdmin(APIView):
     authentication_classes = [JWTAuthentication]
     # permission_classes = [IsAdminUser]
 
-    def get(self, request, id):
-        category = get_object_or_404(Category, id=id)
+    def get(self, request, name):
+        # Retrieve the category by name
+        category = get_object_or_404(Category, name=name)
         
         # Get the child categories (if any)
         child_categories = category.children.all()  # 'children' is the related_name for the parent field
@@ -286,15 +303,17 @@ class CategoryDetailAdmin(APIView):
 
         return Response(data, status=status.HTTP_200_OK)
 
-    def put(self, request, id):
-        category = get_object_or_404(Category, id=id)
+    def put(self, request, name):
+        # Retrieve the category by name
+        category = get_object_or_404(Category, name=name)
         serializer = CategorySerializer(category, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def delete(self, request, id):
-        category = get_object_or_404(Category, id=id)
+    def delete(self, request, name):
+        # Retrieve the category by name
+        category = get_object_or_404(Category, name=name)
         category.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
