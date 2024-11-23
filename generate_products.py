@@ -20,7 +20,7 @@ def create_products():
     colors = [color1, color2, color3]
 
     # Create 24 products
-    for i in range(1, 25):
+    for i in range(1, 300):
         product, created = Product.objects.get_or_create(
             name=f"Product {i}",
             category=category,

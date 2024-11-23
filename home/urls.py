@@ -64,4 +64,5 @@ urlpatterns = [
     path('pants/', PantsView.as_view(), name='PantsView'),
     
     # Include the API router for product-related actions
+    path('api/', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

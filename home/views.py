@@ -11,23 +11,54 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.exceptions import ValidationError
 from django.db.models import Q
 from django.db.models import Min, Max
 
 
 class ProductPagination(pagination.PageNumberPagination):
-    permission_classes = [AllowAny] 
+    permission_classes = [AllowAny]
     page_size = 24
     page_size_query_param = 'page_size'
     max_page_size = 100
-    
+
     def get_paginated_response(self, data):
+        current_page = self.page.number
+        total_pages = self.page.paginator.num_pages
+
+        # Create page list with ellipses if total pages > 10
+        if total_pages > 10:
+            page_range = self.get_paginated_range(current_page, total_pages)
+        else:
+            page_range = list(range(1, total_pages + 1))
+
         return Response({
             'count': self.page.paginator.count,
-            'next': self.get_next_link(),  # Automatically generates the next page link
-            'previous': self.get_previous_link(),  # Automatically generates the previous page link
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link(),
+            'current_page': current_page,
+            'total_pages': total_pages,
+            'page_range': page_range,
             'results': data
         })
+
+    def get_paginated_range(self, current_page, total_pages):
+        page_range = []
+        if current_page <= 6:  # First few pages
+            page_range.extend(range(1, 8))
+            page_range.append('...')
+            page_range.append(total_pages)
+        elif current_page > total_pages - 6:  # Last few pages
+            page_range.append(1)
+            page_range.append('...')
+            page_range.extend(range(total_pages - 6, total_pages + 1))
+        else:  # Middle pages
+            page_range.append(1)
+            page_range.append('...')
+            page_range.extend(range(current_page - 2, current_page + 3))
+            page_range.append('...')
+            page_range.append(total_pages)
+        return page_range
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -127,7 +158,7 @@ class ProductFilter(filters.FilterSet):
 
 class ProductSearchView(ListAPIView):
     permission_classes = [AllowAny]
-
+    pagination_class = ProductPagination
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     filter_backends = [drf_filters.SearchFilter, DjangoFilterBackend]
@@ -136,6 +167,9 @@ class ProductSearchView(ListAPIView):
     filterset_class = ProductFilter  
 
     def list(self, request, *args, **kwargs):
+        # Check if any search/filter parameters are present in the request
+        
+
         queryset = self.filter_queryset(self.get_queryset())
 
         # Calculate min and max prices for the filtered queryset
