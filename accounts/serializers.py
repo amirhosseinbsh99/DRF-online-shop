@@ -79,3 +79,17 @@ class BasketSerializer(serializers.ModelSerializer):
         if peyment_status is not None:
             items = items.filter(peyment=peyment_status)
         return BasketItemSerializer(items, many=True).data
+    
+class OrderHistorySerializer(serializers.ModelSerializer):
+    customer_name = serializers.ReadOnlyField(source='customer.get_full_name')
+    phone_number = serializers.ReadOnlyField(source='customer.phone_number')
+    items = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Basket
+        fields = ['id', 'customer_name', 'phone_number', 'items']
+
+    def get_items(self, obj):
+        # Filter BasketItems where peyment=True for this Basket
+        items = obj.items.filter(peyment=True)
+        return BasketItemSerializer(items, many=True).data

@@ -39,9 +39,8 @@ class UpdateProductSerializer(serializers.ModelSerializer):
     colors = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True, required=False)
     size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all(), many=True, required=False)
     color_ids = ColorSerializer(many=True, required=False)
-    size_ids = SizeSerializer(many=True, required=False)  # Add size handling
-    thumbnail = serializers.ImageField(required=False)  # Separate thumbnail field
-
+    size_ids = SizeSerializer(many=True, required=False)  
+    thumbnail = serializers.ImageField(required=False)  
     color_names = serializers.SerializerMethodField()
     size_names = serializers.SerializerMethodField()
 

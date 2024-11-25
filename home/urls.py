@@ -26,6 +26,7 @@ from .views import (
     SizeListView,
     SizeUpdateView
 )
+from accounts.views import OrderHistoryAdminView
 
 app_name = 'home'
 
@@ -59,6 +60,8 @@ urlpatterns = [
     path('padmin/category/', CategoryAdmin.as_view(), name='CategoryAdmin'),
     path('padmin/category/create/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
     path('padmin/category/<str:name>/', CategoryDetailAdmin.as_view(), name='EditCategoryAdmin'),
+
+    path('padmin/OrderHistoryAdminView/', OrderHistoryAdminView.as_view(), name='OrderHistoryAdminView'),
     
     # Products by category & color
     path('products/', ProductViewSet.as_view({'get': 'list'}), name='products-list'),

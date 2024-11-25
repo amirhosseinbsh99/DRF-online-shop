@@ -8,7 +8,7 @@ from django.contrib.auth.password_validation import validate_password
 from home.models import Basket,Product,BasketItem,Color
 from django.contrib.auth import logout
 from rest_framework.permissions import IsAuthenticated,BasePermission,AllowAny
-from .serializers import CustomerSerializer,CustomerLoginSerializer,DashboardViewSerializer,BasketSerializer,BasketItemSerializer,CustomerSerializer
+from .serializers import CustomerSerializer,CustomerLoginSerializer,OrderHistorySerializer,DashboardViewSerializer,BasketSerializer,BasketItemSerializer,CustomerSerializer
 from .models import Customer
 from django.shortcuts import get_object_or_404
 from django.conf import settings
@@ -654,4 +654,15 @@ class OrderHistoryView(APIView):
         
         # Serialize basket and its items together
         serializer = BasketSerializer(basket, context={'peyment': True})
+        return Response(serializer.data)
+    
+class OrderHistoryAdminView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        # Get all Baskets where at least one item has peyment=True
+        baskets = Basket.objects.filter(items__peyment=True).distinct()
+
+        serializer = OrderHistorySerializer(baskets, many=True)
         return Response(serializer.data)

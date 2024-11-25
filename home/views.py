@@ -297,15 +297,11 @@ class ProductDetailAdmin(APIView):
         size_ids = data.get('size_ids', None)
 
         # If color_ids or size_ids are empty or missing, retain the current values
-        if color_ids is None:
+        if color_ids in [None, []]:
             color_ids = list(product.colors.values_list('id', flat=True))  # Retain the current color IDs
-        elif color_ids == []:
-            color_ids = []  # Explicitly clear the current color relationships
 
-        if size_ids is None:
+        if size_ids in [None, []]:
             size_ids = list(product.size.values_list('id', flat=True))  # Retain the current size IDs
-        elif size_ids == []:
-            size_ids = []  # Explicitly clear the current size relationships
 
         # Use the updated data to validate and save the product
         serializer = UpdateProductSerializer(product, data=data, partial=kwargs.get('partial', False), context={'request': request})
@@ -315,11 +311,9 @@ class ProductDetailAdmin(APIView):
             # Save the product first
             product = serializer.save()
 
-            # Update the ManyToMany relationships if new values are provided
-            if color_ids is not None:
-                product.colors.set(color_ids)  # Update the colors
-            if size_ids is not None:
-                product.size.set(size_ids)  # Update the sizes
+            # Update the ManyToMany relationships with retained or new IDs
+            product.colors.set(color_ids)  # Update the colors
+            product.size.set(size_ids)  # Update the sizes
 
             # Save the product with the updated relationships
             product.save()
