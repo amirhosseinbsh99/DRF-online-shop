@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.core.exceptions import ValidationError
 import re
-from home.models import Product,Category,Basket, BasketItem,ProductImage,Color
+from home.models import Product,Category,Basket, BasketItem,ProductImage,Color,Size
+from accounts.models import Customer
 
 class ProductImageSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
@@ -21,23 +22,93 @@ class ColorSerializer(serializers.ModelSerializer):
         model = Color
         fields = ['id','name', 'hex_code']
 
+class SizeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Size
+        fields = ['id', 'name', 'description']
+
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
         fields = ['image']
 
+
+
+class UpdateProductSerializer(serializers.ModelSerializer):
+    images = ProductImageSerializer(many=True, read_only=True)
+    colors = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True, required=False)
+    size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all(), many=True, required=False)
+    color_ids = ColorSerializer(many=True, required=False)
+    size_ids = SizeSerializer(many=True, required=False)  # Add size handling
+    thumbnail = serializers.ImageField(required=False)  # Separate thumbnail field
+
+    color_names = serializers.SerializerMethodField()
+    size_names = serializers.SerializerMethodField()
+
+    def get_color_names(self, obj):
+        # Return the name of each color related to the product
+        return [color.name for color in obj.colors.all()]
+    def get_size_names(self, obj):
+        # Return the name of each size related to the product
+        return [size.name for size in obj.size.all()]
+
+    def create(self, validated_data):
+        # Extract related data
+        colors_data = validated_data.pop('color_ids', [])
+        sizes_data = validated_data.pop('size_ids', [])  
+        thumbnail = validated_data.pop('thumbnail', None)
+
+        # Create the product
+        product = Product.objects.create(**validated_data)
+
+        # Set many-to-many relationships
+        product.colors.set(colors_data)  # Set colors
+        product.size.set(sizes_data)  # Set sizes
+
+        # Handle the thumbnail
+        if thumbnail:
+            product.thumbnail = thumbnail
+            product.save()
+
+        # Handle the gallery images
+        request = self.context.get('request')
+        if request and request.FILES:
+            images_data = request.FILES.getlist('images')
+            for image_data in images_data:
+                ProductImage.objects.create(product=product, image=image_data)
+
+        return product
+
+    class Meta:
+        model = Product
+        fields = [
+            'id', 'category', 'name', 'brand', 'description', 'model_number',
+            'available', 'price', 'stock', 'colors', 'color_names', 'color_ids',
+            'size','size_names', 'size_ids', 'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images',
+        ]
+
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     colors = ColorSerializer(many=True, read_only=True)
+    size = SizeSerializer(many=True, read_only=True)
     color_ids = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True, write_only=True)
+    size_ids = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all(), many=True, write_only=True)  # Add size handling
     thumbnail = serializers.ImageField(required=False)  # Separate thumbnail field
 
     def create(self, validated_data):
+        # Extract related data
         colors_data = validated_data.pop('color_ids', [])
+        sizes_data = validated_data.pop('size_ids', [])  
         thumbnail = validated_data.pop('thumbnail', None)
-        product = Product.objects.create(**validated_data)
-        product.colors.set(colors_data)
 
+        # Create the product
+        product = Product.objects.create(**validated_data)
+
+        # Set many-to-many relationships
+        product.colors.set(colors_data)  # Set colors
+        product.size.set(sizes_data)  # Set sizes
+
+        # Handle the thumbnail
         if thumbnail:
             product.thumbnail = thumbnail
             product.save()
@@ -56,7 +127,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'category', 'name', 'brand', 'description', 'model_number',
             'available', 'price', 'stock', 'colors', 'color_ids',
-            'size', 'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images',
+            'size', 'size_ids', 'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images',
         ]
 
     # STAR RATING IF NEEDED :D
@@ -65,29 +136,31 @@ class ProductSerializer(serializers.ModelSerializer):
     #         raise serializers.ValidationError("Star rating must be between 0 and 5.")
     #     return value
 
-    def create(self, validated_data):
-        colors_data = validated_data.pop('color_ids', [])
-        product = Product.objects.create(**validated_data)
-        product.colors.set(colors_data)  # Associate colors with the product
+    # def create(self, validated_data):
+    #     colors_data = validated_data.pop('color_ids', [])
+    #     sizes_data = validated_data.pop('size_ids', [])  
+    #     product = Product.objects.create(**validated_data)
+    #     product.colors.set(colors_data)  # Associate colors with the product
+    #     product.size.set(sizes_data)  # Associate sizes with the product
 
-        request = self.context.get('request')
-        if request and request.FILES:
-            images_data = request.FILES.getlist('images')
-            for image_data in images_data:
-                ProductImage.objects.create(product=product, image=image_data)
+    #     request = self.context.get('request')
+    #     if request and request.FILES:
+    #         images_data = request.FILES.getlist('images')
+    #         for image_data in images_data:
+    #             ProductImage.objects.create(product=product, image=image_data)
 
-        return product
+    #     return product
 
 
 
-    class Meta:
-        model = Product
-        fields = [
-            'id', 'category', 'name', 'brand', 'description', 'model_number',
-            'available', 'price', 'stock', 'colors','color_ids',
-            'size', 'material', 'created_at', 'updated_at', 'slug', 'images','thumbnail'
+    # class Meta:
+    #     model = Product
+    #     fields = [
+    #         'id', 'category', 'name', 'brand', 'description', 'model_number',
+    #         'available', 'price', 'stock', 'colors','color_ids',
+    #         'size','size_ids', 'material', 'created_at', 'updated_at', 'slug', 'images','thumbnail'
             
-        ]
+    #     ]
 
 class ProductCheckboxSerializer(serializers.ModelSerializer):
     class Meta:
@@ -102,6 +175,11 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id','title', 'parent_id', 'parent_title']  # Include both parent id and title
+
+class CustomerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = ['id', 'phone_number', 'first_name', 'last_name', 'address', 'is_active', 'created_at']
 
 
 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product,Basket, BasketItem,Color
+from .models import Category, Product,Basket, BasketItem,Color,Size
 from accounts.models import Customer
 
 class CustomerAdmin(admin.ModelAdmin):
@@ -39,5 +39,11 @@ admin.site.register(Basket, BasketAdmin)
 admin.site.register(BasketItem, BasketItemAdmin)
 
 admin.site.register(Customer,CustomerAdmin)
+
+class SizeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'description')  # Display fields in the admin list view
+    search_fields = ('name',)  # Allow searching by name
+
+admin.site.register(Size, SizeAdmin)
 
 

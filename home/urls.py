@@ -20,7 +20,11 @@ from .views import (
     ProductsByCategory,
     ProductsByColor,
     ColorsVeiw,
-    ProductViewSet
+    ProductViewSet,
+    CustomerListView,
+    SizeCreateView,
+    SizeListView,
+    SizeUpdateView
 )
 
 app_name = 'home'
@@ -42,9 +46,14 @@ urlpatterns = [
     path('padmin/product/create/', ProductListCreateAdmin.as_view(), name='CreateProductAdmin'),
     path('padmin/product/<int:id>/', ProductDetailAdmin.as_view(), name='EditProductAdmin'),
     
+    path('padmin/customers/', CustomerListView.as_view(), name='CustomerListView'),
     # Admin color views
     path('padmin/product/color/', ColorAdmin.as_view(), name='ColorAdmin'),
     path('padmin/product/color/<int:id>/', ColorDetailAdmin.as_view(), name='ColorDetailAdmin'),
+    #Admin Size
+    path('padmin/sizes/', SizeListView.as_view(), name='size-list'),
+    path('padmin/sizes/create/', SizeCreateView.as_view(), name='size-create'),
+    path('padmin/sizes/update/<int:pk>/', SizeUpdateView.as_view(), name='size-update'),
     
     # Admin category views
     path('padmin/category/', CategoryAdmin.as_view(), name='CategoryAdmin'),

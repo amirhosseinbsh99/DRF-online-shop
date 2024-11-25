@@ -2,16 +2,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status,viewsets,pagination
 from rest_framework.generics import ListAPIView
-from .models import Product,Category,Color
+from rest_framework.pagination import PageNumberPagination
+from .models import Product,Category,Color,Size
+from accounts.models import Customer
 from accounts.permissions import IsCustomAdminUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .serializers import ProductSerializer,CategorySerializer,ColorSerializer,ProductCheckboxSerializer
+from .serializers import ProductSerializer,CategorySerializer,ColorSerializer,CustomerSerializer,SizeSerializer,UpdateProductSerializer
 from rest_framework import filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated,AllowAny
-from rest_framework.exceptions import ValidationError
 from django.db.models import Q
 from django.db.models import Min, Max
 
@@ -196,37 +197,54 @@ class ProductSearchView(ListAPIView):
 #====================admin=====================#
 
 class ProductListAdmin(APIView):
-    #permission_classes = [IsAdminUser]
     authentication_classes = [JWTAuthentication]
 
     def get(self, request):
-        products = Product.objects.all()
+        products = Product.objects.prefetch_related('sizes')  # Assuming sizes is a related name in Product
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
     
 
 class ProductListCreateAdmin(APIView):
     authentication_classes = [JWTAuthentication]
-    #permission_classes = [IsAdminUser]
+    pagination_class = ProductPagination
 
     def post(self, request):
         serializer = ProductSerializer(data=request.data, context={'request': request})
-        
+
+        # Check if a product with the same slug already exists
         slug = request.data.get('slug')
-        
         if Product.objects.filter(slug=slug).exists():
-            return Response({'error': 'Product with this slug already exists.'}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({'error': 'محصولی با این نام وجود دارد'}, status=status.HTTP_400_BAD_REQUEST)
+  
         if serializer.is_valid():
-            serializer.save()
+            # Save the product instance
+            product = serializer.save()
+
+            # Handle the size relationship
+            size_ids = request.data.get('size', [])  # Assuming sizes are passed as a list of size IDs
+            if size_ids:
+                # Fetch Size objects matching the provided IDs
+                size_objects = Size.objects.filter(id__in=size_ids)
+                # Set the relationship using the `set()` method
+                product.size.set(size_objects)
+            color_ids = request.data.get('colors', [])  # Assuming sizes are passed as a list of size IDs
+            if color_ids:
+                # Fetch Size objects matching the provided IDs
+                color_objects = Color.objects.filter(id__in=color_ids)
+                # Set the relationship using the `set()` method
+                product.colors.set(color_objects)
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     
     def get(self, request):
-        products = Product.objects.order_by('-created_at')
+        products = Product.objects.prefetch_related('size').order_by('-created_at')
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
+
     
     
 class ProductAdmin(APIView):
@@ -243,7 +261,7 @@ class ProductAdmin(APIView):
         if selected_product_ids:
             Product.objects.filter(id__in=selected_product_ids).update(checkbox=True)
 
-        return Response({"success": "Products updated successfully."})
+        return Response({"success": "محصول آپدیت شد"})
 
     def get(self, request):
         products = Product.objects.order_by('-created_at')
@@ -255,22 +273,63 @@ class ProductDetailAdmin(APIView):
     authentication_classes = [JWTAuthentication]
 
     def get_object(self, id):
-        return get_object_or_404(Product.objects.prefetch_related('colors'), id=id)
+        return get_object_or_404(Product.objects.prefetch_related('colors', 'size'), id=id)
+
 
     def get(self, request, id): 
         product = self.get_object(id)
         serializer = ProductSerializer(product)
         return Response(serializer.data)
 
-    def put(self, request, id, *args, **kwargs):  
-        partial = kwargs.pop('partial', False)
+    def put(self, request, id, *args, **kwargs):
         product = self.get_object(id)
-        serializer = ProductSerializer(product, data=request.data, partial=partial, context={'request': request})
+        
+        data = request.data.copy()
+
+        # Check if any field in request data is empty or null, and if so, keep the existing value from the product
+        for field, value in data.items():
+            if value in [None, '']:  # If the value is empty or null, retain the current value
+                data[field] = getattr(product, field)
+
+        # Handle updating the ManyToMany fields separately
+        # Process color_ids and size_ids to update the relationships
+        color_ids = data.get('color_ids', None)
+        size_ids = data.get('size_ids', None)
+
+        # If color_ids or size_ids are empty or missing, retain the current values
+        if color_ids is None:
+            color_ids = list(product.colors.values_list('id', flat=True))  # Retain the current color IDs
+        elif color_ids == []:
+            color_ids = []  # Explicitly clear the current color relationships
+
+        if size_ids is None:
+            size_ids = list(product.size.values_list('id', flat=True))  # Retain the current size IDs
+        elif size_ids == []:
+            size_ids = []  # Explicitly clear the current size relationships
+
+        # Use the updated data to validate and save the product
+        serializer = UpdateProductSerializer(product, data=data, partial=kwargs.get('partial', False), context={'request': request})
+
+        # If the serializer is valid, save the object and return the response
         if serializer.is_valid():
-            serializer.save()
+            # Save the product first
+            product = serializer.save()
+
+            # Update the ManyToMany relationships if new values are provided
+            if color_ids is not None:
+                product.colors.set(color_ids)  # Update the colors
+            if size_ids is not None:
+                product.size.set(size_ids)  # Update the sizes
+
+            # Save the product with the updated relationships
+            product.save()
+
             return Response(serializer.data)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+    
     def delete(self, request, id):  
         product = self.get_object(id)
         product.delete()
@@ -358,6 +417,43 @@ class ColorsVeiw(APIView):
         serializer = ColorSerializer(color, many=True)
         return Response(serializer.data)
 
+class SizeCreateView(APIView):
+    def post(self, request):
+        size_name = request.data.get('name')  # Adjust this to your Size model's unique field
+        
+        # Check if size with the given name already exists
+        if Size.objects.filter(name=size_name).exists():  
+            return Response({'error': 'سایز تکراری است'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = SizeSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    
+class SizeListView(APIView):
+    def get(self, request):
+        sizes = Size.objects.all()  # Get all sizes
+        serializer = SizeSerializer(sizes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class SizeUpdateView(APIView):
+    def put(self, request, pk):
+        size = Size.objects.filter(id=pk).first()
+        
+        if not size:
+            return Response({'error': 'Size not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = SizeSerializer(size, data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 
 class ColorAdmin(APIView):
     authentication_classes = [JWTAuthentication]
@@ -442,6 +538,21 @@ class PantsView(APIView):
         category = Category.objects.filter(title__icontains="شلوار").order_by('-created_date')
         serializer = CategorySerializer(category, many=True)
         return Response(serializer.data)
+    
+class CustomerPagination(PageNumberPagination):
+    page_size = 30  # Number of items per page
+    page_size_query_param = 'page_size'  # Allows the user to set a custom page size in the query params
+    max_page_size = 100
+
+class CustomerListView(ListAPIView):
+    queryset = Customer.objects.all()
+    serializer_class = CustomerSerializer
+    pagination_class = CustomerPagination 
+    permission_classes = [AllowAny] 
+
+
+
+
 
     #if needed edit it and use it(product rating)
 # class RateProductView(APIView):

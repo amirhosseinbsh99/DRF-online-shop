@@ -400,6 +400,7 @@ class LoginView(APIView):
 
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
     def get(self, request, id=None):
         # If no id is provided, return the logged-in user's details
@@ -424,6 +425,9 @@ class DashboardView(APIView):
         data = request.data.copy()
         password = data.pop('password', None)
 
+        for field, value in data.items():
+            if value in [None, '']:  # If the value is empty or null, keep the current value
+                data[field] = getattr(customer, field)
         # Update other fields
         serializer = DashboardViewSerializer(customer, data=data, partial=True)
         if serializer.is_valid():
@@ -470,7 +474,7 @@ class BasketItemCreateView(APIView):
         try:
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
-            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'محصول یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
         
         # Retrieve color if provided
         color = None
@@ -541,6 +545,8 @@ class PaymentRequestView(APIView):
         basket = get_object_or_404(Basket, id=basket_id, customer=customer)
         basket_items = BasketItem.objects.filter(basket=basket, peyment=False)
         
+    
+
         if not basket_items.exists():
             return Response({'error': 'Basket is empty'}, status=status.HTTP_400_BAD_REQUEST)
         

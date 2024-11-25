@@ -19,6 +19,14 @@ class Color(models.Model):
     
     def __str__(self):
         return self.name
+    
+class Size(models.Model):
+    name = models.CharField(max_length=10)  
+    description = models.TextField(null=True, blank=True)  # Optional: Additional info about the size
+
+
+    def __str__(self):
+        return self.name
 
 class Product(models.Model):
     category = models.ForeignKey("Category", null=True, blank=True, on_delete=models.SET_NULL)
@@ -31,7 +39,7 @@ class Product(models.Model):
     price = models.IntegerField()
     stock = models.PositiveIntegerField()
     colors = models.ManyToManyField(Color, blank=True)  
-    size = models.CharField(max_length=10, null=True, blank=True)
+    size = models.ManyToManyField('Size', related_name='products')
     material = models.CharField(max_length=30, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -74,6 +82,7 @@ class BasketItem(models.Model):
     basket = models.ForeignKey(Basket, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     color = models.ForeignKey(Color, on_delete=models.SET_NULL, null=True, blank=True)
+    size = models.ForeignKey(Size, on_delete=models.SET_NULL, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1)
     peyment = models.BooleanField(default=False)
 
