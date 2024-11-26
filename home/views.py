@@ -283,42 +283,27 @@ class ProductDetailAdmin(APIView):
 
     def put(self, request, id, *args, **kwargs):
         product = self.get_object(id)
-        
+
+        # Copy request data to safely modify it
         data = request.data.copy()
 
-        # Check if any field in request data is empty or null, and if so, keep the existing value from the product
+        # Retain current values for fields that are empty or null
         for field, value in data.items():
-            if value in [None, '']:  # If the value is empty or null, retain the current value
+            if value in [None, '']:
                 data[field] = getattr(product, field)
 
-        # Handle updating the ManyToMany fields separately
-        # Process color_ids and size_ids to update the relationships
-        color_ids = data.get('color_ids', None)
-        size_ids = data.get('size_ids', None)
+        # Create the serializer with updated data
+        serializer = UpdateProductSerializer(
+            product,
+            data=data,
+            partial=kwargs.get('partial', False),
+            context={'request': request}
+        )
 
-        # If color_ids or size_ids are empty or missing, retain the current values
-        if color_ids in [None, []]:
-            color_ids = list(product.colors.values_list('id', flat=True))  # Retain the current color IDs
-
-        if size_ids in [None, []]:
-            size_ids = list(product.size.values_list('id', flat=True))  # Retain the current size IDs
-
-        # Use the updated data to validate and save the product
-        serializer = UpdateProductSerializer(product, data=data, partial=kwargs.get('partial', False), context={'request': request})
-
-        # If the serializer is valid, save the object and return the response
+        # Validate and save
         if serializer.is_valid():
-            # Save the product first
             product = serializer.save()
-
-            # Update the ManyToMany relationships with retained or new IDs
-            product.colors.set(color_ids)  # Update the colors
-            product.size.set(size_ids)  # Update the sizes
-
-            # Save the product with the updated relationships
-            product.save()
-
-            return Response(serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

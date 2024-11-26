@@ -38,52 +38,21 @@ class UpdateProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     colors = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True, required=False)
     size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all(), many=True, required=False)
-    color_ids = ColorSerializer(many=True, required=False)
-    size_ids = SizeSerializer(many=True, required=False)  
-    thumbnail = serializers.ImageField(required=False)  
     color_names = serializers.SerializerMethodField()
     size_names = serializers.SerializerMethodField()
 
     def get_color_names(self, obj):
-        # Return the name of each color related to the product
         return [color.name for color in obj.colors.all()]
+
     def get_size_names(self, obj):
-        # Return the name of each size related to the product
         return [size.name for size in obj.size.all()]
-
-    def create(self, validated_data):
-        # Extract related data
-        colors_data = validated_data.pop('color_ids', [])
-        sizes_data = validated_data.pop('size_ids', [])  
-        thumbnail = validated_data.pop('thumbnail', None)
-
-        # Create the product
-        product = Product.objects.create(**validated_data)
-
-        # Set many-to-many relationships
-        product.colors.set(colors_data)  # Set colors
-        product.size.set(sizes_data)  # Set sizes
-
-        # Handle the thumbnail
-        if thumbnail:
-            product.thumbnail = thumbnail
-            product.save()
-
-        # Handle the gallery images
-        request = self.context.get('request')
-        if request and request.FILES:
-            images_data = request.FILES.getlist('images')
-            for image_data in images_data:
-                ProductImage.objects.create(product=product, image=image_data)
-
-        return product
 
     class Meta:
         model = Product
         fields = [
             'id', 'category', 'name', 'brand', 'description', 'model_number',
-            'available', 'price', 'stock', 'colors', 'color_names', 'color_ids',
-            'size','size_names', 'size_ids', 'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images',
+            'available', 'price', 'stock', 'colors', 'color_names', 'size',
+            'size_names', 'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images',
         ]
 
 class ProductSerializer(serializers.ModelSerializer):
