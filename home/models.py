@@ -20,6 +20,9 @@ class Color(models.Model):
     def __str__(self):
         return self.name
     
+    def product_count(self):
+        return self.products.count()
+    
 class Size(models.Model):
     name = models.CharField(max_length=10)  
     description = models.TextField(null=True, blank=True)  # Optional: Additional info about the size
@@ -38,7 +41,7 @@ class Product(models.Model):
     checkbox = models.BooleanField(default=False)
     price = models.IntegerField()
     stock = models.PositiveIntegerField()
-    colors = models.ManyToManyField(Color, blank=True)  
+    colors = models.ManyToManyField(Color, blank=True,related_name='products_color')  
     size = models.ManyToManyField('Size', related_name='products')
     material = models.CharField(max_length=30, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

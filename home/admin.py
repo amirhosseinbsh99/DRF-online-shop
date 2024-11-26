@@ -3,11 +3,17 @@ from .models import Category, Product,Basket, BasketItem,Color,Size
 from accounts.models import Customer
 
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('username','phone_number', 'is_active', 'is_admin', 'created_at')
+    list_display = ('id','username','phone_number', 'is_active', 'is_admin', 'created_at')
 
-@admin.register(Color)
 class ColorAdmin(admin.ModelAdmin):
-    list_display = ['id','name']
+    list_display = ('name', 'hex_code', 'product_count')
+
+    def product_count(self, obj):
+        return obj.products_color.count()  # Use the correct related_name
+
+    product_count.short_description = 'Number of Products'
+
+admin.site.register(Color, ColorAdmin)
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):

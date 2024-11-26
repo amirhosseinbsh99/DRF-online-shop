@@ -5,6 +5,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from .models import Product,Category,Color,Size
 from accounts.models import Customer
+from django.db.models import Count
 from accounts.permissions import IsCustomAdminUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .serializers import ProductSerializer,CategorySerializer,ColorSerializer,CustomerSerializer,SizeSerializer,UpdateProductSerializer
@@ -308,7 +309,6 @@ class ProductDetailAdmin(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-    
     def delete(self, request, id):  
         product = self.get_object(id)
         product.delete()
@@ -437,6 +437,7 @@ class SizeUpdateView(APIView):
 class ColorAdmin(APIView):
     authentication_classes = [JWTAuthentication]
     # permission_classes = [IsAdminUser]
+
     def post(self, request):
         data = request.data
         if Color.objects.filter(name=data.get('name')).exists():
@@ -447,9 +448,16 @@ class ColorAdmin(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     def get(self, request):
-        color = Color.objects.all()
-        serializer = ColorSerializer(color, many=True)
-        return Response(serializer.data)
+        colors = Color.objects.annotate(product_count=Count('products_color'))
+        # Modify the serializer data to include the product count
+        color_data = [
+            {
+                **ColorSerializer(color).data, 
+                'product_count': color.product_count
+            }
+            for color in colors
+        ]
+        return Response(color_data)
 
 
 class ColorDetailAdmin(APIView):
