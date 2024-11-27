@@ -423,7 +423,7 @@ class SizeUpdateView(APIView):
         size = Size.objects.filter(id=pk).first()
         
         if not size:
-            return Response({'error': 'Size not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'سایز پیدا نشد'}, status=status.HTTP_404_NOT_FOUND)
         
         serializer = SizeSerializer(size, data=request.data)
         
@@ -432,6 +432,15 @@ class SizeUpdateView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, pk):
+        size = Size.objects.filter(id=pk).first()
+
+        if not size:
+            return Response({'error': 'سایز پیدا نشد'}, status=status.HTTP_404_NOT_FOUND)
+
+        size.delete()
+        return Response({'message': 'سایز حذف شد'}, status=status.HTTP_204_NO_CONTENT)
     
 
 class ColorAdmin(APIView):

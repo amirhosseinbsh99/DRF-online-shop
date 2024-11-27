@@ -54,7 +54,7 @@ urlpatterns = [
     #Admin Size
     path('padmin/sizes/', SizeListView.as_view(), name='size-list'),
     path('padmin/sizes/create/', SizeCreateView.as_view(), name='size-create'),
-    path('padmin/sizes/update/<int:pk>/', SizeUpdateView.as_view(), name='size-update'),
+    path('padmin/sizes/<int:pk>/', SizeUpdateView.as_view(), name='size-update'),
     
     # Admin category views
     path('padmin/category/', CategoryAdmin.as_view(), name='CategoryAdmin'),
