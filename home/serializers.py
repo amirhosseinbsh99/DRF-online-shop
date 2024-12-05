@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.core.exceptions import ValidationError
 import re
-from home.models import Product,Category,Basket, BasketItem,ProductImage,Color,Size
+from home.models import Product,Category,Basket, BasketItem,ProductImage,Color,Size,ProductVariant
 from accounts.models import Customer
 
 
@@ -56,26 +56,32 @@ class UpdateProductSerializer(serializers.ModelSerializer):
             'size_names', 'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images',
         ]
 
+
+        
+class ProductVariantSerializer(serializers.ModelSerializer):
+    color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all())
+    size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all())
+
+    class Meta:
+        model = ProductVariant
+        fields = ['id', 'product', 'color', 'size', 'stock', 'price']
+
 class ProductSerializer(serializers.ModelSerializer):
+    variants = ProductVariantSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
-    colors = ColorSerializer(many=True, read_only=True)
-    size = SizeSerializer(many=True, read_only=True)
-    color_ids = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True, write_only=True)
-    size_ids = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all(), many=True, write_only=True)  # Add size handling
     thumbnail = serializers.ImageField(required=False)  # Separate thumbnail field
 
     def create(self, validated_data):
         # Extract related data
-        colors_data = validated_data.pop('color_ids', [])
-        sizes_data = validated_data.pop('size_ids', [])  
+        
+        
         thumbnail = validated_data.pop('thumbnail', None)
 
         # Create the product
         product = Product.objects.create(**validated_data)
 
         # Set many-to-many relationships
-        product.colors.set(colors_data)  # Set colors
-        product.size.set(sizes_data)  # Set sizes
+        
 
         # Handle the thumbnail
         if thumbnail:
@@ -90,14 +96,14 @@ class ProductSerializer(serializers.ModelSerializer):
                 ProductImage.objects.create(product=product, image=image_data)
 
         return product
-
+    
     class Meta:
-        model = Product
-        fields = [
-            'id', 'category', 'name', 'brand', 'description', 'model_number',
-            'available', 'price', 'stock', 'colors', 'color_ids',
-            'size', 'size_ids', 'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images',
-        ]
+            model = Product
+            fields = [
+                'id', 'category', 'name', 'brand', 'description', 'model_number',
+                'available', 'price', 'stock', 'material', 'created_at', 
+                'updated_at', 'slug', 'thumbnail', 'images', 'variants',
+            ]
 
     # STAR RATING IF NEEDED :D
     # def validate_star_rating(self, value):

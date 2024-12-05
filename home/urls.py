@@ -24,7 +24,8 @@ from .views import (
     CustomerListView,
     SizeCreateView,
     SizeListView,
-    SizeUpdateView
+    SizeUpdateView,
+    ProductDetailBySlugView
 )
 from accounts.views import OrderHistoryAdminView
 
@@ -32,7 +33,8 @@ app_name = 'home'
 
 # Configure the router
 router = DefaultRouter()
-router.register(r'products', ProductViewSet)
+# router.register(r'products', ProductViewSet)
+
 
 urlpatterns = [
     # Home view
@@ -69,12 +71,13 @@ urlpatterns = [
     path('products/category/<str:category_name>/', ProductsByCategory.as_view(), name='products-by-category'),
     path('products/color/', ColorsVeiw.as_view(), name='products-by-color'),
     path('products/color/<int:color_id>/', ProductsByColor.as_view(), name='products-by-color'),
-    
+    path('products/<slug:slug>/', ProductDetailBySlugView.as_view(), name='product-detail-slug'),
+
     # Product views for specific categories
     path('shoes/', ShoeView.as_view(), name='ShoeView'),
     path('shirts/', ShirtView.as_view(), name='ShirtView'),
     path('pants/', PantsView.as_view(), name='PantsView'),
     
     # Include the API router for product-related actions
-    path('api/', include(router.urls)),
+    # path('api/', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

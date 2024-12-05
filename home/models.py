@@ -41,8 +41,7 @@ class Product(models.Model):
     checkbox = models.BooleanField(default=False)
     price = models.IntegerField()
     stock = models.PositiveIntegerField()
-    colors = models.ManyToManyField(Color, blank=True,related_name='products_color')  
-    size = models.ManyToManyField('Size', related_name='products')
+   
     material = models.CharField(max_length=30, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -66,6 +65,19 @@ class Product(models.Model):
             self.slug = slugify(self.name.replace(" ", "-"), allow_unicode=True)
         super().save(*args, **kwargs)
 
+class ProductVariant(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
+    color = models.ForeignKey(Color, on_delete=models.CASCADE)
+    size = models.ForeignKey(Size, on_delete=models.CASCADE)
+    stock = models.PositiveIntegerField(default=0)
+    price = models.IntegerField()
+
+    class Meta:
+        unique_together = ('product', 'color', 'size')  # Ensure unique combinations
+
+    def __str__(self):
+        return f"{self.product.name} - {self.color.name} - {self.size.name}"
+    
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)
@@ -83,11 +95,9 @@ class Basket(models.Model):
 
 class BasketItem(models.Model):
     basket = models.ForeignKey(Basket, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    color = models.ForeignKey(Color, on_delete=models.SET_NULL, null=True, blank=True)
-    size = models.ForeignKey(Size, on_delete=models.SET_NULL, null=True, blank=True)
+    product_variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE)  # Link to the specific variant
     quantity = models.PositiveIntegerField(default=1)
-    peyment = models.BooleanField(default=False)
-
+    payment = models.BooleanField(default=False)
+    
     def __str__(self):
-        return f"{self.quantity} of {self.product.name} in basket {self.basket.id}"
+        return f"{self.quantity} of {self.product_variant.product.name} ({self.product_variant.color.name}, {self.product_variant.size.name}) in basket {self.basket.id}"

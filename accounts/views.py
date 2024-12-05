@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from .OTP import generate_and_send_otp,verify_otp  
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.password_validation import validate_password
-from home.models import Basket,Product,BasketItem,Color
+from home.models import Basket,Product,BasketItem,Color,ProductVariant
 from django.contrib.auth import logout
 from rest_framework.permissions import IsAuthenticated,BasePermission,AllowAny
 from .serializers import CustomerSerializer,CustomerLoginSerializer,OrderHistorySerializer,DashboardViewSerializer,BasketSerializer,BasketItemSerializer,CustomerSerializer
@@ -461,34 +461,24 @@ class BasketItemCreateView(APIView):
 
     def get(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
-        basket_items = BasketItem.objects.filter(basket=basket, peyment=False)
-        serializer = BasketSerializer(basket, context={'peyment': False})
+        basket_items = BasketItem.objects.filter(basket=basket, payment=False)
+        serializer = BasketItemSerializer(basket_items, many=True)
         return Response(serializer.data)
 
     def post(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
-        color_id = request.data.get('color')  # Make sure this is 'color_id' in your request data
-        product_id = request.data.get('product_id')
+        product_variant_id = request.data.get('product_variant_id')  # Use product_variant_id in request
         quantity = int(request.data.get('quantity', 1))
         
         try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            return Response({'error': 'محصول یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Retrieve color if provided
-        color = None
-        if color_id:
-            try:
-                color = Color.objects.get(id=color_id)
-            except Color.DoesNotExist:
-                return Response({'error': 'Color not found'}, status=status.HTTP_404_NOT_FOUND)
+            product_variant = ProductVariant.objects.get(id=product_variant_id)
+        except ProductVariant.DoesNotExist:
+            return Response({'error': 'Product variant not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Include color in the get_or_create lookup to allow different colors of the same product
+        # Create or update the basket item
         basket_item, created = BasketItem.objects.get_or_create(
             basket=basket,
-            product=product,
-            color=color,  # Now color is included in the uniqueness criteria
+            product_variant=product_variant,  # Use the product_variant
             defaults={'quantity': quantity}
         )
         
@@ -498,44 +488,31 @@ class BasketItemCreateView(APIView):
 
         serializer = BasketItemSerializer(basket_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
     
     def put(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
-        product_id = request.data.get('product_id')
+        product_variant_id = request.data.get('product_variant_id')  # Use product_variant_id
         quantity = request.data.get('quantity')
-        color_id = request.data.get('color')
 
-        if not product_id:
-            return Response({'error': 'Product ID is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        # Retrieve color if color_id is provided
-        color = None
-        if color_id:
-            try:
-                color = Color.objects.get(id=color_id)
-            except Color.DoesNotExist:
-                return Response({'error': 'Color not found'}, status=status.HTTP_404_NOT_FOUND)
+        if not product_variant_id:
+            return Response({'error': 'Product variant ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            basket_item = BasketItem.objects.get(basket=basket, product=product)
+            product_variant = ProductVariant.objects.get(id=product_variant_id)
+        except ProductVariant.DoesNotExist:
+            return Response({'error': 'Product variant not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            basket_item = BasketItem.objects.get(basket=basket, product_variant=product_variant)
             if quantity is not None:
                 basket_item.quantity = quantity
-            if color:  # Update color if provided
-                basket_item.color = color
             basket_item.save()
         except BasketItem.DoesNotExist:
             return Response({'error': 'Basket item not found'}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = BasketItemSerializer(basket_item)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
+    
 class PaymentRequestView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -543,7 +520,7 @@ class PaymentRequestView(APIView):
     def get(self, request, basket_id):
         customer = request.user
         basket = get_object_or_404(Basket, id=basket_id, customer=customer)
-        basket_items = BasketItem.objects.filter(basket=basket, peyment=False)
+        basket_items = BasketItem.objects.filter(basket=basket, payment=False)
         
     
 

@@ -8,7 +8,7 @@ from accounts.models import Customer
 from django.db.models import Count
 from accounts.permissions import IsCustomAdminUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .serializers import ProductSerializer,CategorySerializer,ColorSerializer,CustomerSerializer,SizeSerializer,UpdateProductSerializer
+from .serializers import ProductSerializer,CategorySerializer,ColorSerializer,CustomerSerializer,SizeSerializer,UpdateProductSerializer,ProductVariantSerializer
 from rest_framework import filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
@@ -16,7 +16,15 @@ from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from django.db.models import Q
 from django.db.models import Min, Max
+import json
+from rest_framework.generics import ListAPIView,RetrieveAPIView
 
+
+class ProductDetailBySlugView(RetrieveAPIView):
+    permission_classes = [AllowAny] 
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    lookup_field = 'slug'  # Use 'slug' instead of 'id'
 
 class ProductPagination(pagination.PageNumberPagination):
     permission_classes = [AllowAny]
@@ -208,37 +216,46 @@ class ProductListAdmin(APIView):
 
 class ProductListCreateAdmin(APIView):
     authentication_classes = [JWTAuthentication]
-    pagination_class = ProductPagination
 
     def post(self, request):
-        serializer = ProductSerializer(data=request.data, context={'request': request})
+    # Validate the product data
+        product_serializer = ProductSerializer(data=request.data, context={'request': request})
 
         # Check if a product with the same slug already exists
         slug = request.data.get('slug')
         if Product.objects.filter(slug=slug).exists():
             return Response({'error': 'محصولی با این نام وجود دارد'}, status=status.HTTP_400_BAD_REQUEST)
-  
-        if serializer.is_valid():
+
+        if product_serializer.is_valid():
             # Save the product instance
-            product = serializer.save()
+            product = product_serializer.save()
 
-            # Handle the size relationship
-            size_ids = request.data.get('size', [])  # Assuming sizes are passed as a list of size IDs
-            if size_ids:
-                # Fetch Size objects matching the provided IDs
-                size_objects = Size.objects.filter(id__in=size_ids)
-                # Set the relationship using the `set()` method
-                product.size.set(size_objects)
-            color_ids = request.data.get('colors', [])  # Assuming sizes are passed as a list of size IDs
-            if color_ids:
-                # Fetch Size objects matching the provided IDs
-                color_objects = Color.objects.filter(id__in=color_ids)
-                # Set the relationship using the `set()` method
-                product.colors.set(color_objects)
+            # Handle the variants
+            variants_data = request.data.get('variants', [])
+            if isinstance(variants_data, str):  # If variants_data is a string, parse it
+                try:
+                    variants_data = json.loads(variants_data)
+                except json.JSONDecodeError:
+                    return Response({'error': 'فرمت واریانت‌ها اشتباه است'}, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            for variant in variants_data:
+                variant['product'] = product.id  # Associate the product ID with the variant
+                variant_serializer = ProductVariantSerializer(data=variant)
+                if variant_serializer.is_valid():
+                    variant_serializer.save()
+                else:
+                    # If any variant fails, return the errors
+                    return Response(
+                        {'error': 'مشکلی در ایجاد یکی از واریانت‌ها وجود دارد', 'details': variant_serializer.errors},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Return the full product data, including variants
+            full_product_serializer = ProductSerializer(product, context={'request': request})
+            return Response(full_product_serializer.data, status=status.HTTP_201_CREATED)
+
+        # Return validation errors for the product
+        return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     
     def get(self, request):

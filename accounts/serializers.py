@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.validators import UniqueValidator
 from .models import Customer
-from home.models import Product,BasketItem,Basket,Color
+from home.models import Product,BasketItem,Basket,Color,ProductVariant
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -52,19 +52,24 @@ class DashboardViewSerializer(serializers.ModelSerializer):
         model = Customer
         exclude = ['is_admin','is_superuser','id','groups','user_permissions','is_staff','is_active']
 
+class ProductVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductVariant
+        fields = ['id', 'product', 'color', 'size', 'price', 'stock']
+
 class BasketItemSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
-    color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), required=False)
+    product_variant = ProductVariantSerializer()  # Include product_variant data in the response
+
     class Meta:
         model = BasketItem
-        fields = ['id', 'product', 'quantity', 'peyment','color']
+        fields = ['id', 'basket', 'product_variant', 'quantity', 'payment']
 
 # class BasketItemSerializer(serializers.ModelSerializer):
 #     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
 
 #     class Meta:
 #         model = BasketItem
-#         fields = ['id', 'product', 'quantity', 'peyment']
+#         fields = ['id', 'product', 'quantity', 'payment']
 
 class BasketSerializer(serializers.ModelSerializer):
     items = serializers.SerializerMethodField()
@@ -74,10 +79,10 @@ class BasketSerializer(serializers.ModelSerializer):
         fields = ['id', 'customer', 'items']
 
     def get_items(self, obj):
-        peyment_status = self.context.get('peyment', None)
+        payment_status = self.context.get('payment', None)
         items = obj.items.all()
-        if peyment_status is not None:
-            items = items.filter(peyment=peyment_status)
+        if payment_status is not None:
+            items = items.filter(payment=payment_status)
         return BasketItemSerializer(items, many=True).data
     
 class OrderHistorySerializer(serializers.ModelSerializer):
@@ -90,6 +95,6 @@ class OrderHistorySerializer(serializers.ModelSerializer):
         fields = ['id', 'customer_name', 'phone_number', 'items']
 
     def get_items(self, obj):
-        # Filter BasketItems where peyment=True for this Basket
-        items = obj.items.filter(peyment=True)
+        # Filter BasketItems where payment=True for this Basket
+        items = obj.items.filter(payment=True)
         return BasketItemSerializer(items, many=True).data
