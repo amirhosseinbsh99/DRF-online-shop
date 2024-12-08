@@ -158,9 +158,19 @@ class ProductFilter(filters.FilterSet):
     # Custom filter for colors
     color = filters.CharFilter(method='filter_by_color')
 
+    # Ordering filter for cheapest to most expensive and most likes
+    ordering = filters.OrderingFilter(
+        fields=(
+            ('price', 'price'),
+        ),
+        field_labels={
+            'price': 'Price',
+        },
+    )
+
     class Meta:
         model = Product
-        fields = ['category', 'price', 'size', 'color']
+        fields = ['category', 'price', 'size', 'color','ordering']
 
     def filter_by_color(self, queryset, name, value):
         return queryset.filter(colors__name__icontains=value)
@@ -185,6 +195,8 @@ class ProductSearchView(ListAPIView):
         # Calculate min and max prices for the filtered queryset
         min_price = queryset.aggregate(Min('price'))['price__min']
         max_price = queryset.aggregate(Max('price'))['price__max']
+
+        
 
         # Serialize the filtered products
         page = self.paginate_queryset(queryset)
@@ -262,8 +274,6 @@ class ProductListCreateAdmin(APIView):
         products = Product.objects.prefetch_related('size').order_by('-created_at')
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
-
-    
     
 class ProductAdmin(APIView):
     permission_classes = [IsCustomAdminUser]

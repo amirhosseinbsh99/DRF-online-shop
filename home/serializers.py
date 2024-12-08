@@ -57,7 +57,6 @@ class UpdateProductSerializer(serializers.ModelSerializer):
         ]
 
 
-        
 class ProductVariantSerializer(serializers.ModelSerializer):
     color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all())
     size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all())

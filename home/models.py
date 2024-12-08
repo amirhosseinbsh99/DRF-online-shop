@@ -41,13 +41,11 @@ class Product(models.Model):
     checkbox = models.BooleanField(default=False)
     price = models.IntegerField()
     stock = models.PositiveIntegerField()
-   
     material = models.CharField(max_length=30, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     slug = models.SlugField(unique=True, max_length=200, blank=True, allow_unicode=True)
     thumbnail = models.ImageField(upload_to='product_thumbnails/', null=True, blank=True)
-
     # total_rating = models.IntegerField(default=0)
     # number_of_ratings = models.IntegerField(default=0)
     # star_rating = models.FloatField(default=0, validators=[MinValueValidator(0), MaxValueValidator(5)])
@@ -56,7 +54,6 @@ class Product(models.Model):
     #     if self.number_of_ratings == 0:
     #         return 0.0
     #     return self.total_rating / self.number_of_ratings
-
     def __str__(self):
         return self.name
 
@@ -64,6 +61,7 @@ class Product(models.Model):
         if not self.slug:
             self.slug = slugify(self.name.replace(" ", "-"), allow_unicode=True)
         super().save(*args, **kwargs)
+
 
 class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
@@ -77,7 +75,7 @@ class ProductVariant(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.color.name} - {self.size.name}"
-    
+
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)
@@ -88,7 +86,6 @@ class ProductImage(models.Model):
 
 class Basket(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='baskets')
-    
 
     def __str__(self):
         return f"Basket {self.id} for {self.customer.username}"

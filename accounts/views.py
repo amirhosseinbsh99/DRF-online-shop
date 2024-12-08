@@ -448,7 +448,7 @@ class BasketListCreateView(APIView):
 
     def get(self, request):
         baskets = Basket.objects.filter(customer=request.user)
-        serializer = BasketSerializer(baskets, many=True, context={'peyment': False})
+        serializer = BasketSerializer(baskets, many=True, context={'payment': False})
         return Response(serializer.data)
 
     def post(self, request):
@@ -599,7 +599,7 @@ class PaymentVerifyView(APIView):
                     product = item.product
                     if product.stock >= item.quantity:
                         product.stock -= item.quantity
-                        item.peyment = True
+                        item.payment = True
                         product.save()
                         item.save()
                     else:
@@ -626,11 +626,11 @@ class OrderHistoryView(APIView):
     def get(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
         
-        # Filter BasketItems with peyment=False
-        basket_items = BasketItem.objects.filter(basket=basket, peyment=True)
+        # Filter BasketItems with payment=False
+        basket_items = BasketItem.objects.filter(basket=basket, payment=True)
         
         # Serialize basket and its items together
-        serializer = BasketSerializer(basket, context={'peyment': True})
+        serializer = BasketSerializer(basket, context={'payment': True})
         return Response(serializer.data)
     
 class OrderHistoryAdminView(APIView):
@@ -638,8 +638,8 @@ class OrderHistoryAdminView(APIView):
     authentication_classes = [JWTAuthentication]
 
     def get(self, request):
-        # Get all Baskets where at least one item has peyment=True
-        baskets = Basket.objects.filter(items__peyment=True).distinct()
+        # Get all Baskets where at least one item has payment=True
+        baskets = Basket.objects.filter(items__payment=True).distinct()
 
         serializer = OrderHistorySerializer(baskets, many=True)
         return Response(serializer.data)
