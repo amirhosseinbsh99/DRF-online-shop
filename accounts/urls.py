@@ -38,7 +38,7 @@ urlpatterns = [
     
     # Basket & Payment
     path('basket/', BasketListCreateView.as_view(), name='basket_list_create'),
-    path('basket/<int:basket_id>/', BasketItemCreateView.as_view(), name='basket_item_create'),
+    path('basket/<int:basket_id>/items/', BasketItemCreateView.as_view(), name='basket_item_create'),
     path('basket/<int:basket_id>/request/', PaymentRequestView.as_view(), name='payment_request'),
     path('basket/<int:basket_id>/verify/', PaymentVerifyView.as_view(), name='payment_verify'),
     path('basket/<int:basket_id>/order_history/', OrderHistoryView.as_view(), name='order_history'),

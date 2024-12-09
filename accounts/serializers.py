@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.validators import UniqueValidator
+from home.serializers import ProductVariantSerializer
 from .models import Customer
 from home.models import Product,BasketItem,Basket,Color,ProductVariant
 
@@ -52,24 +53,31 @@ class DashboardViewSerializer(serializers.ModelSerializer):
         model = Customer
         exclude = ['is_admin','is_superuser','id','groups','user_permissions','is_staff','is_active']
 
-class ProductVariantSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductVariant
-        fields = ['id', 'product', 'color', 'size', 'price', 'stock']
 
 class BasketItemSerializer(serializers.ModelSerializer):
-    product_variant = ProductVariantSerializer()  # Include product_variant data in the response
+    product = serializers.SerializerMethodField()  # Dynamically get product details
+    product_variant = ProductVariantSerializer() 
+    color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), required=False)
+    price = serializers.FloatField(source='product_variant.price', read_only=True)  # Access price via product_variant
+    total_price = serializers.SerializerMethodField()  # Calculated field
 
     class Meta:
         model = BasketItem
-        fields = ['id', 'basket', 'product_variant', 'quantity', 'payment']
+        fields = ['id', 'product','quantity', 'payment','color','product_variant','price','total_price']
+        
+    def get_total_price(self, obj):
+        return obj.quantity * obj.product_variant.price
 
-# class BasketItemSerializer(serializers.ModelSerializer):
-#     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    def get_product(self, obj):
+        """Retrieve product details from the related product variant."""
+        product = obj.product_variant.product
+        return {
+            "id": product.id,
+            "name": product.name,
+            "description": product.description,
+            "price": product.price,
+        }
 
-#     class Meta:
-#         model = BasketItem
-#         fields = ['id', 'product', 'quantity', 'payment']
 
 class BasketSerializer(serializers.ModelSerializer):
     items = serializers.SerializerMethodField()

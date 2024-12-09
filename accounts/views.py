@@ -459,11 +459,13 @@ class BasketItemCreateView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
+
     def get(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
         basket_items = BasketItem.objects.filter(basket=basket, payment=False)
         serializer = BasketItemSerializer(basket_items, many=True)
         return Response(serializer.data)
+
 
     def post(self, request, basket_id):
         basket = get_object_or_404(Basket, id=basket_id, customer=request.user)
@@ -508,7 +510,7 @@ class BasketItemCreateView(APIView):
                 basket_item.quantity = quantity
             basket_item.save()
         except BasketItem.DoesNotExist:
-            return Response({'error': 'Basket item not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'سبد یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = BasketItemSerializer(basket_item)
         return Response(serializer.data, status=status.HTTP_200_OK)

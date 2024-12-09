@@ -58,14 +58,30 @@ class UpdateProductSerializer(serializers.ModelSerializer):
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
-    color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all())
-    size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all())
+    color = serializers.SerializerMethodField()  # Get color details
+    size = serializers.SerializerMethodField()  # Get size details
 
     class Meta:
         model = ProductVariant
         fields = ['id', 'product', 'color', 'size', 'stock', 'price']
 
+    def get_color(self, obj):
+        """Retrieve color details (name and hex code)."""
+        color = obj.color
+        return {
+            "name": color.name,
+            "hex_code": color.hex_code
+        }
+
+    def get_size(self, obj):
+        """Retrieve size details (name)."""
+        return {
+            "name": obj.size.name
+        }
+
 class ProductSerializer(serializers.ModelSerializer):
+    colors = ColorSerializer(many=True, read_only=True)
+    sizes = SizeSerializer(many=True, source='size', read_only=True)  # Use the related name `size`  # Use the related name `size`
     variants = ProductVariantSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     thumbnail = serializers.ImageField(required=False)  # Separate thumbnail field
@@ -73,14 +89,16 @@ class ProductSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Extract related data
         
-        
+        colors_data = validated_data.pop('color_ids', [])
+        sizes_data = validated_data.pop('size_ids', [])  
         thumbnail = validated_data.pop('thumbnail', None)
 
         # Create the product
         product = Product.objects.create(**validated_data)
 
         # Set many-to-many relationships
-        
+        product.colors.set(colors_data)  # Set colors
+        product.size.set(sizes_data)  # Set sizes
 
         # Handle the thumbnail
         if thumbnail:
@@ -101,7 +119,7 @@ class ProductSerializer(serializers.ModelSerializer):
             fields = [
                 'id', 'category', 'name', 'brand', 'description', 'model_number',
                 'available', 'price', 'stock', 'material', 'created_at', 
-                'updated_at', 'slug', 'thumbnail', 'images', 'variants',
+                'updated_at', 'slug', 'thumbnail', 'images', 'variants','sizes','colors',
             ]
 
     # STAR RATING IF NEEDED :D
