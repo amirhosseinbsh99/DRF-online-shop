@@ -58,11 +58,14 @@ class BasketItemAdmin(admin.ModelAdmin):
 class ProductVariantInline(admin.TabularInline):  # Use TabularInline for a table-like display
     model = ProductVariant
     extra = 0  # Do not show empty extra rows
-    fields = ('color', 'size', 'stock', 'price')  # Fields to display in the inline
+    fields = ('color', 'size', 'stock', 'price','discount_percentage', 'get_discounted_price')  # Fields to display in the inline
+    readonly_fields = ('get_discounted_price',)
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'price', 'available', 'stock')
+    list_display = ('name', 'category', 'price', 'available', 'stock','discount_percentage', 'get_discounted_price')
+    readonly_fields = ('get_discounted_price',)
     inlines = [ProductVariantInline]  # Add the inline for ProductVariant
+
 
 class ProductVariantAdmin(admin.ModelAdmin):
     list_display = ('id', 'get_product_name', 'get_color', 'get_size', 'stock', 'price')

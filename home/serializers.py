@@ -60,10 +60,14 @@ class UpdateProductSerializer(serializers.ModelSerializer):
 class ProductVariantSerializer(serializers.ModelSerializer):
     color = serializers.SerializerMethodField()  # Get color details
     size = serializers.SerializerMethodField()  # Get size details
+    discounted_price = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariant
-        fields = ['id', 'product', 'color', 'size', 'stock', 'price']
+        fields = ['id', 'product', 'color', 'size', 'stock', 'price','discount_percentage', 'discounted_price']
+
+    def get_discounted_price(self, obj):
+        return obj.get_discounted_price()
 
     def get_color(self, obj):
         """Retrieve color details (name and hex code)."""
@@ -85,6 +89,8 @@ class ProductSerializer(serializers.ModelSerializer):
     variants = ProductVariantSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     thumbnail = serializers.ImageField(required=False)  # Separate thumbnail field
+    discounted_price = serializers.SerializerMethodField()
+
 
     def create(self, validated_data):
         # Extract related data
@@ -121,6 +127,9 @@ class ProductSerializer(serializers.ModelSerializer):
                 'available', 'price', 'stock', 'material', 'created_at', 
                 'updated_at', 'slug', 'thumbnail', 'images', 'variants','sizes','colors',
             ]
+            
+    def get_discounted_price(self, obj):
+        return obj.get_discounted_price()
 
     # STAR RATING IF NEEDED :D
     # def validate_star_rating(self, value):

@@ -46,6 +46,11 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     slug = models.SlugField(unique=True, max_length=200, blank=True, allow_unicode=True)
     thumbnail = models.ImageField(upload_to='product_thumbnails/', null=True, blank=True)
+    discount_percentage = models.FloatField(
+        default=0.0,
+        validators=[MinValueValidator(0.0), MaxValueValidator(100.0)],
+        help_text="Discount percentage for the product (0-100)"
+    )
     # total_rating = models.IntegerField(default=0)
     # number_of_ratings = models.IntegerField(default=0)
     # star_rating = models.FloatField(default=0, validators=[MinValueValidator(0), MaxValueValidator(5)])
@@ -54,6 +59,13 @@ class Product(models.Model):
     #     if self.number_of_ratings == 0:
     #         return 0.0
     #     return self.total_rating / self.number_of_ratings
+
+    def get_discounted_price(self):
+        """Calculate the discounted price for the product."""
+        if self.discount_percentage > 0:
+            return self.price * (1 - self.discount_percentage / 100)
+        return self.price
+    
     def __str__(self):
         return self.name
 
@@ -69,9 +81,21 @@ class ProductVariant(models.Model):
     size = models.ForeignKey(Size, on_delete=models.CASCADE)
     stock = models.PositiveIntegerField(default=0)
     price = models.IntegerField()
+    discount_percentage = models.FloatField(
+        default=0.0,
+        validators=[MinValueValidator(0.0), MaxValueValidator(100.0)],
+        help_text="Discount percentage for the variant (0-100)"
+    )
 
     class Meta:
         unique_together = ('product', 'color', 'size')  # Ensure unique combinations
+
+    def get_discounted_price(self):
+        """Calculate the discounted price for the variant."""
+        if self.discount_percentage > 0:
+            return self.price * (1 - self.discount_percentage / 100)
+        # Fallback to product's discount if no variant-specific discount
+        return self.product.get_discounted_price()
 
     def __str__(self):
         return f"{self.product.name} - {self.color.name} - {self.size.name}"
@@ -84,11 +108,13 @@ class ProductImage(models.Model):
     def __str__(self):
         return f"Image for {self.product.name}"
 
+
 class Basket(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='baskets')
 
     def __str__(self):
         return f"Basket {self.id} for {self.customer.username}"
+
 
 class BasketItem(models.Model):
     basket = models.ForeignKey(Basket, on_delete=models.CASCADE, related_name='items')
