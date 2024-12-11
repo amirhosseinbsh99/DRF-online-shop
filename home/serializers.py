@@ -88,7 +88,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         # Extract related data
-        
+
         colors_data = validated_data.pop('color_ids', [])
         sizes_data = validated_data.pop('size_ids', [])  
         thumbnail = validated_data.pop('thumbnail', None)
@@ -128,31 +128,7 @@ class ProductSerializer(serializers.ModelSerializer):
     #         raise serializers.ValidationError("Star rating must be between 0 and 5.")
     #     return value
 
-    # def create(self, validated_data):
-    #     colors_data = validated_data.pop('color_ids', [])
-    #     sizes_data = validated_data.pop('size_ids', [])  
-    #     product = Product.objects.create(**validated_data)
-    #     product.colors.set(colors_data)  # Associate colors with the product
-    #     product.size.set(sizes_data)  # Associate sizes with the product
-
-    #     request = self.context.get('request')
-    #     if request and request.FILES:
-    #         images_data = request.FILES.getlist('images')
-    #         for image_data in images_data:
-    #             ProductImage.objects.create(product=product, image=image_data)
-
-    #     return product
-
-
-
-    # class Meta:
-    #     model = Product
-    #     fields = [
-    #         'id', 'category', 'name', 'brand', 'description', 'model_number',
-    #         'available', 'price', 'stock', 'colors','color_ids',
-    #         'size','size_ids', 'material', 'created_at', 'updated_at', 'slug', 'images','thumbnail'
-            
-    #     ]
+    
 
 class ProductCheckboxSerializer(serializers.ModelSerializer):
     class Meta:

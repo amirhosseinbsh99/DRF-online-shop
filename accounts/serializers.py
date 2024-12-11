@@ -4,7 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework.validators import UniqueValidator
 from home.serializers import ProductVariantSerializer
 from .models import Customer
-from home.models import Product,BasketItem,Basket,Color,ProductVariant
+from home.models import Product,BasketItem,Basket,Color,ProductVariant,ProductImage
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -60,13 +60,27 @@ class BasketItemSerializer(serializers.ModelSerializer):
     color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), required=False)
     price = serializers.FloatField(source='product_variant.price', read_only=True)  # Access price via product_variant
     total_price = serializers.SerializerMethodField()  # Calculated field
+    thumbnail = serializers.SerializerMethodField()
 
     class Meta:
         model = BasketItem
-        fields = ['id', 'product','quantity', 'payment','color','product_variant','price','total_price']
+        fields = ['id', 'product','thumbnail','quantity', 'payment','color','product_variant','price','total_price']
         
     def get_total_price(self, obj):
         return obj.quantity * obj.product_variant.price
+    
+    def get_thumbnail(self, obj):
+    # Try to fetch the thumbnail directly from the Product model
+        if obj.product_variant.product.thumbnail:
+            return obj.product_variant.product.thumbnail.url  # Return thumbnail URL if present
+        
+        # Fallback: Fetch the first related image for the product if thumbnail is not set
+        product_image = ProductImage.objects.filter(product=obj.product_variant.product).first()
+        if product_image and product_image.image:
+            return product_image.image.url  # Return the URL of the image
+        
+        # Return None if no thumbnail or image is found
+        return None
 
     def get_product(self, obj):
         """Retrieve product details from the related product variant."""
@@ -85,6 +99,7 @@ class BasketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Basket
         fields = ['id', 'customer', 'items']
+
 
     def get_items(self, obj):
         payment_status = self.context.get('payment', None)
