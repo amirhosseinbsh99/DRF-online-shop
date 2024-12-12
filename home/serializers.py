@@ -28,6 +28,7 @@ class SizeSerializer(serializers.ModelSerializer):
         model = Size
         fields = ['id', 'name', 'description']
 
+
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
@@ -41,19 +42,31 @@ class UpdateProductSerializer(serializers.ModelSerializer):
     size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all(), many=True, required=False)
     color_names = serializers.SerializerMethodField()
     size_names = serializers.SerializerMethodField()
+    discounted_price = serializers.SerializerMethodField() 
 
     def get_color_names(self, obj):
         return [color.name for color in obj.colors.all()]
 
     def get_size_names(self, obj):
-        return [size.name for size in obj.size.all()]
+        # Ensure 'size' is properly accessed as a related field
+        try:
+            return [size.name for size in obj.size.all()]  # For ManyToManyField
+        except AttributeError:
+            return []
+
+    def get_discounted_price(self, obj):
+        # Compute discounted price based on discount_percentage
+        if obj.discount_percentage > 0:
+            return obj.price * (1 - obj.discount_percentage / 100)
+        return obj.price
 
     class Meta:
         model = Product
         fields = [
             'id', 'category', 'name', 'brand', 'description', 'model_number',
             'available', 'price', 'stock', 'colors', 'color_names', 'size',
-            'size_names', 'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images',
+            'size_names', 'material', 'created_at', 'updated_at', 'slug', 
+            'thumbnail', 'images','discount_percentage', 'discounted_price'
         ]
 
 
@@ -85,31 +98,31 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     colors = ColorSerializer(many=True, read_only=True)
-    sizes = SizeSerializer(many=True, source='size', read_only=True)  # Use the related name `size`  # Use the related name `size`
+    sizes = SizeSerializer(many=True, read_only=True)  # This should reference sizes via the related name
     variants = ProductVariantSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
-    thumbnail = serializers.ImageField(required=False)  # Separate thumbnail field
+    thumbnail = serializers.ImageField(required=False)
     discounted_price = serializers.SerializerMethodField()
 
-
     def create(self, validated_data):
-        # Extract related data
-
         colors_data = validated_data.pop('color_ids', [])
-        sizes_data = validated_data.pop('size_ids', [])  
+        sizes_data = validated_data.pop('size_ids', [])
         thumbnail = validated_data.pop('thumbnail', None)
 
         # Create the product
         product = Product.objects.create(**validated_data)
 
-        # Set many-to-many relationships
-        product.colors.set(colors_data)  # Set colors
-        product.size.set(sizes_data)  # Set sizes
+        # Set many-to-many relationships for colors and sizes via the ProductVariant
+        for size in sizes_data:
+            # Create ProductVariant for each size and color combination (if necessary)
+            ProductVariant.objects.create(product=product, size_id=size, color_id=colors_data[0])  # Example for creating variants
 
+        
         # Handle the thumbnail
         if thumbnail:
             product.thumbnail = thumbnail
             product.save()
+
 
         # Handle the gallery images
         request = self.context.get('request')
@@ -119,15 +132,15 @@ class ProductSerializer(serializers.ModelSerializer):
                 ProductImage.objects.create(product=product, image=image_data)
 
         return product
-    
+
     class Meta:
-            model = Product
-            fields = [
-                'id', 'category', 'name', 'brand', 'description', 'model_number',
-                'available', 'price', 'stock', 'material', 'created_at', 
-                'updated_at', 'slug', 'thumbnail', 'images', 'variants','sizes','colors',
-            ]
-            
+        model = Product
+        fields = [
+            'id', 'category', 'name', 'brand', 'description', 'model_number',
+            'available', 'price', 'discount_percentage', 'discounted_price', 'stock',
+            'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images', 'variants', 'sizes', 'colors',
+        ]
+        
     def get_discounted_price(self, obj):
         return obj.get_discounted_price()
 

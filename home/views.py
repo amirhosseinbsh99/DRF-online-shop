@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework import status,viewsets,pagination
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
-from .models import Product,Category,Color,Size
+from .models import Product,Category,Color,Size,ProductVariant
 from accounts.models import Customer
 from django.db.models import Count
 from accounts.permissions import IsCustomAdminUser
@@ -227,10 +227,11 @@ class ProductListAdmin(APIView):
     
 
 class ProductListCreateAdmin(APIView):
-    authentication_classes = [JWTAuthentication]
+    # authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny] 
 
     def post(self, request):
-    # Validate the product data
+        # Validate the product data
         product_serializer = ProductSerializer(data=request.data, context={'request': request})
 
         # Check if a product with the same slug already exists
@@ -242,38 +243,16 @@ class ProductListCreateAdmin(APIView):
             # Save the product instance
             product = product_serializer.save()
 
-            # Handle the variants
-            variants_data = request.data.get('variants', [])
-            if isinstance(variants_data, str):  # If variants_data is a string, parse it
-                try:
-                    variants_data = json.loads(variants_data)
-                except json.JSONDecodeError:
-                    return Response({'error': 'فرمت واریانت‌ها اشتباه است'}, status=status.HTTP_400_BAD_REQUEST)
-
-            for variant in variants_data:
-                variant['product'] = product.id  # Associate the product ID with the variant
-                variant_serializer = ProductVariantSerializer(data=variant)
-                if variant_serializer.is_valid():
-                    variant_serializer.save()
-                else:
-                    # If any variant fails, return the errors
-                    return Response(
-                        {'error': 'مشکلی در ایجاد یکی از واریانت‌ها وجود دارد', 'details': variant_serializer.errors},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-            # Return the full product data, including variants
-            full_product_serializer = ProductSerializer(product, context={'request': request})
-            return Response(full_product_serializer.data, status=status.HTTP_201_CREATED)
+            # Return the created product data
+            return Response(product_serializer.data, status=status.HTTP_201_CREATED)
 
         # Return validation errors for the product
         return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    
     def get(self, request):
-        products = Product.objects.prefetch_related('size').order_by('-created_at')
-        serializer = ProductSerializer(products, many=True)
+        serializer = ProductSerializer( many=True, context={'request': request})
         return Response(serializer.data)
+
     
 class ProductAdmin(APIView):
     permission_classes = [IsCustomAdminUser]
@@ -298,11 +277,14 @@ class ProductAdmin(APIView):
 
 
 class ProductDetailAdmin(APIView):
-    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny] 
 
     def get_object(self, id):
-        return get_object_or_404(Product.objects.prefetch_related('colors', 'size'), id=id)
-
+        # Prefetch 'colors' and 'sizes' through the ProductVariant model
+        return get_object_or_404(Product.objects.prefetch_related(
+            'variants__color',  # Prefetch colors through the related 'variants' field
+            'variants__size'    # Prefetch sizes through the related 'variants' field
+        ), id=id)
 
     def get(self, request, id): 
         product = self.get_object(id)
@@ -335,11 +317,48 @@ class ProductDetailAdmin(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
     def delete(self, request, id):  
         product = self.get_object(id)
         product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    
+
+
+class ProductVariantAdminView(APIView):
+    permission_classes = [IsAuthenticated, IsCustomAdminUser]
+
+    def get_object(self, id):
+        return get_object_or_404(ProductVariant, id=id)
+
+    def post(self, request, *args, **kwargs):
+        # Create a new ProductVariant
+        serializer = ProductVariantSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            product_variant = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, id, *args, **kwargs):
+        # Update an existing ProductVariant
+        product_variant = self.get_object(id)
+        serializer = ProductVariantSerializer(
+            product_variant, 
+            data=request.data, 
+            partial=kwargs.get('partial', False), 
+            context={'request': request}
+        )
+        if serializer.is_valid():
+            product_variant = serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id, *args, **kwargs):
+        # Delete a ProductVariant
+        product_variant = self.get_object(id)
+        product_variant.delete()
+        return Response({"detail": "Product variant deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
 
 
 class ProductSearchAdmin(APIView):

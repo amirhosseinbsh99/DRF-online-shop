@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product,Basket, BasketItem,Color,Size,ProductVariant
+from .models import Category, Product,Basket, BasketItem,Color,Size,ProductVariant,ProductImage
 from accounts.models import Customer
 
 class CustomerAdmin(admin.ModelAdmin):
@@ -85,6 +85,11 @@ class ProductVariantAdmin(admin.ModelAdmin):
     def get_size(self, obj):
         return obj.size.name
     get_size.short_description = 'Size'
+
+@admin.register(ProductImage)
+class ProductImage(admin.ModelAdmin):
+    list_display = ('product', 'image')
+    search_fields = ('product',)
 
 # Register the ProductVariantAdmin
 admin.site.register(ProductVariant, ProductVariantAdmin)

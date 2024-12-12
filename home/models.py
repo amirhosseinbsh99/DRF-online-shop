@@ -36,6 +36,8 @@ class Product(models.Model):
     name = models.CharField(max_length=200)
     brand = models.CharField(max_length=100, null=True, blank=True)
     description = models.TextField()
+    colors = models.ManyToManyField(Color, through='ProductVariant', related_name='products')
+    sizes =  models.ManyToManyField(Size, through='ProductVariant', related_name='products')
     model_number = models.CharField(max_length=100, null=True, blank=True)
     available = models.BooleanField(default=True)
     checkbox = models.BooleanField(default=False)
