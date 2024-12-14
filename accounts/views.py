@@ -351,6 +351,7 @@ class VerifyPasswordResetOTPView(APIView):
         
 
 class LogoutView(APIView):
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     
 

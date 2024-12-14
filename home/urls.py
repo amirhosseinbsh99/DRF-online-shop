@@ -26,7 +26,12 @@ from .views import (
     SizeCreateView,
     SizeListView,
     SizeUpdateView,
-    ProductDetailBySlugView
+    ProductDetailBySlugView,
+    ProductListAdmin,
+    UploadProductImagesView,
+    ProductVariantAdminView,
+    DeleteProductImageView,
+    GetProductImagesView
 )
 from accounts.views import OrderHistoryAdminView
 
@@ -45,11 +50,13 @@ urlpatterns = [
     path('search/', ProductSearchView.as_view(), name='ProductSearchView'),
     
     # Admin product views
-    path('padmin/', ProductListCreateAdmin.as_view(), name='ProductAdmin'),
+    path('padmin/', ProductListAdmin.as_view(), name='ProductListAdmin'),
     path('padmin/product/', ProductAdmin.as_view(), name='ProductAdmin'),
     path('padmin/product/create/', ProductListCreateAdmin.as_view(), name='CreateProductAdmin'),
+    path('padmin/<slug:product_slug>/upload-images/', UploadProductImagesView.as_view(), name='upload-product-images'),
+    path('padmin/<slug:product_slug>/images/<int:image_id>/delete/', DeleteProductImageView.as_view(), name='delete-product-image'),
+    path('padmin/<slug:product_slug>/images/', GetProductImagesView.as_view(), name='get-product-image'),
     path('padmin/product/<int:id>/', ProductDetailAdmin.as_view(), name='EditProductAdmin'),
-    
     path('padmin/customers/', CustomerListView.as_view(), name='CustomerListView'),
     # Admin color views
     path('padmin/product/color/', ColorAdmin.as_view(), name='ColorAdmin'),
@@ -58,6 +65,9 @@ urlpatterns = [
     path('padmin/sizes/', SizeListView.as_view(), name='size-list'),
     path('padmin/sizes/create/', SizeCreateView.as_view(), name='size-create'),
     path('padmin/sizes/<int:pk>/', SizeUpdateView.as_view(), name='size-update'),
+    #admin variant
+    path('padmin/product-variant/create/', ProductVariantAdminView.as_view(), name='product_variant_create'),
+    path('padmin/product-variant/<int:id>/', ProductVariantAdminView.as_view(), name='product_variant_update_delete'),  
     
     # Admin category views
     path('padmin/category/', CategoryAdmin.as_view(), name='CategoryAdmin'),

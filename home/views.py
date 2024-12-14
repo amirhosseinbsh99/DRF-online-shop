@@ -3,12 +3,13 @@ from rest_framework.views import APIView
 from rest_framework import status,viewsets,pagination
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
-from .models import Product,Category,Color,Size,ProductVariant
+from rest_framework.exceptions import ValidationError
+from .models import Product,Category,Color,Size,ProductVariant,ProductImage
 from accounts.models import Customer
 from django.db.models import Count
 from accounts.permissions import IsCustomAdminUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .serializers import ProductSerializer,CategorySerializer,ColorSerializer,CustomerSerializer,SizeSerializer,UpdateProductSerializer,ProductVariantSerializer
+from .serializers import ProductSerializer,CategorySerializer,ColorSerializer,ProductImageSerializer,CustomerSerializer,SizeSerializer,UpdateProductSerializer,ProductVariantSerializer
 from rest_framework import filters as drf_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
@@ -217,18 +218,16 @@ class ProductSearchView(ListAPIView):
 
 #====================admin=====================#
 
-class ProductListAdmin(APIView):
-    authentication_classes = [JWTAuthentication]
-
-    def get(self, request):
-        products = Product.objects.prefetch_related('sizes')  # Assuming sizes is a related name in Product
-        serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
-    
+class ProductListAdmin(ListAPIView):
+    permission_classes = [AllowAny] 
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    lookup_field = 'slug'  
+    pagination_class = ProductPagination
+        
 
 class ProductListCreateAdmin(APIView):
-    # authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny] 
+    permission_classes = [AllowAny]
 
     def post(self, request):
         # Validate the product data
@@ -239,18 +238,16 @@ class ProductListCreateAdmin(APIView):
         if Product.objects.filter(slug=slug).exists():
             return Response({'error': 'محصولی با این نام وجود دارد'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # If product does not exist, validate and save
         if product_serializer.is_valid():
-            # Save the product instance
             product = product_serializer.save()
-
-            # Return the created product data
             return Response(product_serializer.data, status=status.HTTP_201_CREATED)
 
         # Return validation errors for the product
         return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request):
-        serializer = ProductSerializer( many=True, context={'request': request})
+        serializer = ProductSerializer(Product.objects.all(), many=True, context={'request': request})
         return Response(serializer.data)
 
     
@@ -322,22 +319,31 @@ class ProductDetailAdmin(APIView):
         product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    
-
 
 class ProductVariantAdminView(APIView):
-    permission_classes = [IsAuthenticated, IsCustomAdminUser]
+    # permission_classes = [IsAuthenticated, IsCustomAdminUser]
+    permission_classes = [AllowAny] 
 
     def get_object(self, id):
         return get_object_or_404(ProductVariant, id=id)
 
     def post(self, request, *args, **kwargs):
+        # Check if the combination of product, color, and size already exists
+        product = request.data.get('product')
+        color = request.data.get('color')
+        size = request.data.get('size')
+
+        # Check if a ProductVariant with the same product, color, and size already exists
+        if ProductVariant.objects.filter(product=product, color=color, size=size).exists():
+            raise ValidationError("یک محصول با این ترکیب رنگ و اندازه از قبل وجود دارد.")
+
         # Create a new ProductVariant
         serializer = ProductVariantSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             product_variant = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
     def put(self, request, id, *args, **kwargs):
         # Update an existing ProductVariant
@@ -357,7 +363,80 @@ class ProductVariantAdminView(APIView):
         # Delete a ProductVariant
         product_variant = self.get_object(id)
         product_variant.delete()
-        return Response({"detail": "Product variant deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"detail": "ویژگی محصول حذف شد"}, status=status.HTTP_204_NO_CONTENT)
+    
+class UploadProductImagesView(APIView):
+    permission_classes = [AllowAny]
+    # permission_classes = [IsAuthenticated]  # Adjust the permission based on your needs
+
+    def post(self, request, product_slug):
+        # Find the product by slug
+        try:
+            product = Product.objects.get(slug=product_slug)
+        except Product.DoesNotExist:
+            return Response({'error': 'محصول یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Ensure that the user is authorized to upload images (optional)
+        # if request.user != product.owner:
+        #     return Response({'error': 'You are not authorized to upload images to this product'}, 
+        #                     status=status.HTTP_403_FORBIDDEN)
+
+        # Check if there are image files in the request
+        if 'images' not in request.FILES:
+            return Response({'error': 'هیچ عکسی آپلود نشد'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the list of images from the request
+        images = request.FILES.getlist('images')
+
+        # Create ProductImage instances for each image uploaded
+        for image in images:
+            ProductImage.objects.create(product=product, image=image)
+
+        # Return success response
+        return Response({'message': 'عکس آپلود شد'}, status=status.HTTP_201_CREATED)
+    
+class DeleteProductImageView(APIView):
+    permission_classes = [AllowAny]
+    # permission_classes = [IsAuthenticated]  # Adjust the permission based on your needs
+
+    def delete(self, request, product_slug, image_id):
+        # Find the product by slug
+        try:
+            product = Product.objects.get(slug=product_slug)
+        except Product.DoesNotExist:
+            return Response({'error': 'محصول یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Find the ProductImage by ID and check if it belongs to the given product
+        try:
+            product_image = ProductImage.objects.get(id=image_id, product=product)
+        except ProductImage.DoesNotExist:
+            return Response({'error': 'عکس مورد نظر یافت نشد یا متعلق به این محصول نیست'}, 
+                            status=status.HTTP_404_NOT_FOUND)
+
+        # Delete the product image
+        product_image.delete()
+
+        # Return success response
+        return Response({'message': 'عکس با موفقیت حذف شد'}, status=status.HTTP_204_NO_CONTENT)
+    
+class GetProductImagesView(APIView):
+    permission_classes = [AllowAny]  # You can adjust the permission as needed
+
+    def get(self, request, product_slug):
+        # Find the product by slug
+        try:
+            product = Product.objects.get(slug=product_slug)
+        except Product.DoesNotExist:
+            return Response({'error': 'محصول یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Retrieve all ProductImages related to the product
+        product_images = ProductImage.objects.filter(product=product)
+
+        # Serialize the images
+        serializer = ProductImageSerializer(product_images, many=True)
+
+        # Return the serialized image data
+        return Response({'images': serializer.data}, status=status.HTTP_200_OK)
 
 
 
@@ -492,6 +571,8 @@ class SizeUpdateView(APIView):
 class ColorAdmin(APIView):
     authentication_classes = [JWTAuthentication]
     # permission_classes = [IsAdminUser]
+    permission_classes = [AllowAny] 
+
 
     def post(self, request):
         data = request.data
@@ -503,7 +584,7 @@ class ColorAdmin(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     def get(self, request):
-        colors = Color.objects.annotate(product_count=Count('products_color'))
+        colors = Color.objects.annotate(product_count=Count('products'))
         # Modify the serializer data to include the product count
         color_data = [
             {

@@ -76,6 +76,11 @@ class Product(models.Model):
             self.slug = slugify(self.name.replace(" ", "-"), allow_unicode=True)
         super().save(*args, **kwargs)
 
+    def save(self, *args, **kwargs):
+        if self.stock <= 0:
+            self.available = False
+        super().save(*args, **kwargs)
+
 
 class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')

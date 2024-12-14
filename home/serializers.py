@@ -37,11 +37,6 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 
 class UpdateProductSerializer(serializers.ModelSerializer):
-    images = ProductImageSerializer(many=True, read_only=True)
-    colors = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), many=True, required=False)
-    size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all(), many=True, required=False)
-    color_names = serializers.SerializerMethodField()
-    size_names = serializers.SerializerMethodField()
     discounted_price = serializers.SerializerMethodField() 
 
     def get_color_names(self, obj):
@@ -64,15 +59,14 @@ class UpdateProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'category', 'name', 'brand', 'description', 'model_number',
-            'available', 'price', 'stock', 'colors', 'color_names', 'size',
-            'size_names', 'material', 'created_at', 'updated_at', 'slug', 
-            'thumbnail', 'images','discount_percentage', 'discounted_price'
+            'available', 'price', 'stock','material', 'created_at', 'updated_at', 'slug', 
+            'thumbnail','discount_percentage', 'discounted_price'
         ]
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
-    color = serializers.SerializerMethodField()  # Get color details
-    size = serializers.SerializerMethodField()  # Get size details
+    color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all()) 
+    size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all())  
     discounted_price = serializers.SerializerMethodField()
 
     class Meta:
@@ -109,7 +103,7 @@ class ProductSerializer(serializers.ModelSerializer):
         sizes_data = validated_data.pop('size_ids', [])
         thumbnail = validated_data.pop('thumbnail', None)
 
-        # Create the product
+        # Create the product instance
         product = Product.objects.create(**validated_data)
 
         # Set many-to-many relationships for colors and sizes via the ProductVariant
@@ -117,18 +111,17 @@ class ProductSerializer(serializers.ModelSerializer):
             # Create ProductVariant for each size and color combination (if necessary)
             ProductVariant.objects.create(product=product, size_id=size, color_id=colors_data[0])  # Example for creating variants
 
-        
-        # Handle the thumbnail
+        # Handle the thumbnail if provided
         if thumbnail:
             product.thumbnail = thumbnail
             product.save()
 
-
-        # Handle the gallery images
+        # Handle the gallery images (make sure request.FILES is passed correctly)
         request = self.context.get('request')
         if request and request.FILES:
             images_data = request.FILES.getlist('images')
             for image_data in images_data:
+                # Create ProductImage instances for each uploaded image
                 ProductImage.objects.create(product=product, image=image_data)
 
         return product
@@ -140,7 +133,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'available', 'price', 'discount_percentage', 'discounted_price', 'stock',
             'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images', 'variants', 'sizes', 'colors',
         ]
-        
+
     def get_discounted_price(self, obj):
         return obj.get_discounted_price()
 
