@@ -64,9 +64,37 @@ class UpdateProductSerializer(serializers.ModelSerializer):
         ]
 
 
+# class ProductVariantAdminSerializer(serializers.ModelSerializer):
+#     color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all()) 
+#     size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all())  
+    
+#     discounted_price = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = ProductVariant
+#         fields = ['id', 'product', 'color', 'size', 'stock', 'price','discount_percentage', 'discounted_price']
+
+#     def get_discounted_price(self, obj):
+#         return obj.get_discounted_price()
+
+#     def get_color(self, obj):
+#         """Retrieve color details (name and hex code)."""
+#         color = obj.color
+#         return {
+#             "name": color.name,
+#             "hex_code": color.hex_code
+#         }
+
+#     def get_size(self, obj):
+#         """Retrieve size details (name)."""
+#         return {
+#             "name": obj.size.name
+#         }
+
 class ProductVariantSerializer(serializers.ModelSerializer):
-    color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all()) 
-    size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all())  
+    
+    color = serializers.SerializerMethodField()
+    size = serializers.SerializerMethodField()
     discounted_price = serializers.SerializerMethodField()
 
     class Meta:

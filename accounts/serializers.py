@@ -47,7 +47,7 @@ class CustomerLoginSerializer(serializers.Serializer):
         if len(value) < 8:
             raise serializers.ValidationError("پسورد باید 8 رقمی باشد")
         return value
-    
+
 class DashboardViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
@@ -55,16 +55,17 @@ class DashboardViewSerializer(serializers.ModelSerializer):
 
 
 class BasketItemSerializer(serializers.ModelSerializer):
-    product = serializers.SerializerMethodField()  # Dynamically get product details
+    product = serializers.SerializerMethodField()
     product_variant = ProductVariantSerializer() 
     color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all(), required=False)
     price = serializers.FloatField(source='product_variant.price', read_only=True)  # Access price via product_variant
     total_price = serializers.SerializerMethodField()  # Calculated field
+    total_discounted_price = serializers.SerializerMethodField()  # Total discounted price
     thumbnail = serializers.SerializerMethodField()
 
     class Meta:
         model = BasketItem
-        fields = ['id', 'product','thumbnail','quantity', 'payment','color','product_variant','price','total_price']
+        fields = ['id','product','thumbnail','quantity', 'payment','color','product_variant','price','total_price','total_discounted_price']
         
     def get_total_price(self, obj):
         return obj.quantity * obj.product_variant.price
@@ -81,6 +82,18 @@ class BasketItemSerializer(serializers.ModelSerializer):
         
         # Return None if no thumbnail or image is found
         return None
+    
+    def get_product_name(self, obj):
+        return obj.product_variant.product.name  # Assuming the product is related to the variant
+    
+    def get_product_slug(self, obj):
+        return obj.product_variant.product.slug  # Assuming the product is related to the variant
+    
+    def get_total_discounted_price(self, obj):
+        """
+        Calculate the total discounted price for this item.
+        """
+        return obj.product_variant.get_discounted_price()
 
     def get_product(self, obj):
         """Retrieve product details from the related product variant."""
@@ -107,6 +120,13 @@ class BasketSerializer(serializers.ModelSerializer):
         if payment_status is not None:
             items = items.filter(payment=payment_status)
         return BasketItemSerializer(items, many=True).data
+    
+    def get_total_discounted_price(self, obj):
+        """
+        Sum up the total discounted prices for all items in the basket.
+        Each item's total discounted price is already calculated.
+        """
+        return sum(item.get_total_discounted_price() for item in obj.items.all())
     
 class OrderHistorySerializer(serializers.ModelSerializer):
     customer_name = serializers.ReadOnlyField(source='customer.get_full_name')

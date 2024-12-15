@@ -473,8 +473,26 @@ class BasketListCreateView(APIView):
 
     def get(self, request):
         baskets = Basket.objects.filter(customer=request.user)
-        serializer = BasketSerializer(baskets, many=True, context={'payment': False})
-        return Response(serializer.data)
+        basket_data = []
+
+        for basket in baskets:
+            # Get basket items for the current basket
+            basket_items = BasketItem.objects.filter(basket=basket, payment=False)
+            basket_item_serializer = BasketItemSerializer(basket_items, many=True)
+
+            # Calculate the total discounted price for all basket items
+            total_discounted_price = sum(
+                item['quantity'] * item['total_discounted_price']  # Sum all the items' discounted prices
+                for item in basket_item_serializer.data
+            )
+
+            # Append the basket data with the total discounted price
+            basket_data.append({
+                'basket': BasketSerializer(basket).data,
+                'total_discounted_price': int(total_discounted_price)  # Ensure it's an integer
+            })
+
+        return Response(basket_data)
 
     def post(self, request):
         basket, created = Basket.objects.get_or_create(customer=request.user)
@@ -549,6 +567,8 @@ class PaymentRequestView(APIView):
         customer = request.user
         basket = get_object_or_404(Basket, id=basket_id, customer=customer)
         basket_items = BasketItem.objects.filter(basket=basket, payment=False)
+        basket_item_serializer = BasketItemSerializer(basket_items, many=True)
+
         
         if not basket_items.exists():
             return Response({'error': 'سبد شما خالی است'}, status=status.HTTP_400_BAD_REQUEST)
@@ -557,7 +577,12 @@ class PaymentRequestView(APIView):
             if item.product_variant.stock < item.quantity:
                 return Response({'error': f'محصول نا موجود است {item.product_variant.name}'}, status=status.HTTP_400_BAD_REQUEST)
             
-        total_amount = sum(item.product_variant.price * item.quantity for item in basket_items)
+
+
+        total_amount = sum(
+            item['quantity'] * item['total_discounted_price']  # Sum all the items' discounted prices
+            for item in basket_item_serializer.data
+        )
 
         data = {
             "merchant_id": settings.ZARINPAL_MERCHANT_ID,
