@@ -13,6 +13,7 @@ class Category(models.Model):
     def __str__(self):
         return f'{self.id}, {self.title}'   
 
+
 class Color(models.Model):  
     name = models.CharField(max_length=50, unique=True)
     hex_code = models.CharField(max_length=7)

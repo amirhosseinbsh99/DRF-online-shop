@@ -1,25 +1,49 @@
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-#from rest_framework.authentication import TokenAuthentication
-from .OTP import generate_and_send_otp,verify_otp  
+from rest_framework.permissions import (
+    IsAuthenticated, 
+    BasePermission, 
+    AllowAny
+)
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.contrib.auth.password_validation import validate_password
-from home.models import Basket,Product,BasketItem,Color,ProductVariant
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.authtoken.models import Token
+
 from django.contrib.auth import logout
-from rest_framework.permissions import IsAuthenticated,BasePermission,AllowAny
-from .serializers import CustomerSerializer,CustomerLoginSerializer,OrderHistorySerializer,DashboardViewSerializer,BasketSerializer,BasketItemSerializer,CustomerSerializer
-from .models import Customer
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from django.conf import settings
-import requests,secrets,os
-from rest_framework_simplejwt.tokens import RefreshToken
-import json
 from django.utils import timezone
+
 from datetime import timedelta
+import requests
+import secrets
+import os
+import json
+
 from kavenegar import *
-from rest_framework.authtoken.models import Token
-from django.core.exceptions import ValidationError 
+
+from .OTP import generate_and_send_otp, verify_otp
+from .models import Customer
+from .serializers import (
+    CustomerSerializer, 
+    CustomerLoginSerializer, 
+    OrderHistorySerializer, 
+    DashboardViewSerializer, 
+    BasketSerializer, 
+    BasketItemSerializer
+)
+from home.models import (
+    Basket, 
+    Product, 
+    BasketItem, 
+    Color, 
+    ProductVariant
+)
+#from rest_framework.authentication import TokenAuthentication
+
 
 # class SendOTPView(APIView):
 #     def post(self, request, *args, **kwargs):
@@ -221,7 +245,7 @@ class VerifyOTPAndCreateUserView(APIView):
         otp = request.data.get('otp')
         
         if not phone_number or not otp:
-             return Response({"error": "Phone number and otp are required"}, status=status.HTTP_400_BAD_REQUEST)
+             return Response({"error": " شماره و کد تایید مورد نیاز است"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             
             # Retrieve the customer and validate OTP
@@ -234,7 +258,7 @@ class VerifyOTPAndCreateUserView(APIView):
             if not customer.is_active:
                 if timezone.now() > customer.created_at + timedelta(seconds=30):
                     customer.delete()
-                    return Response({"error": "OTP has expired. User deleted."}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"error": "زمان کد تایید به پایان رسید"}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({"error": "اکانت شما قبلا فعال شده است"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -269,7 +293,7 @@ class VerifyOTPAndCreateUserView(APIView):
 
         except Exception as e:
             print(f"Unexpected error: {e}")
-            return Response({"error": "Failed to verify OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "کد تایید نشد"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class SendPasswordResetOTPView(APIView):
     permission_classes = [AllowAny]
@@ -278,13 +302,13 @@ class SendPasswordResetOTPView(APIView):
         phone_number = request.data.get('phone_number')
 
         if not phone_number:
-            return Response({"error": "Phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "شماره مورد نیاز است"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             # Check if customer exists
             customer = Customer.objects.filter(phone_number=phone_number).first()
             if not customer:
-                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": "کاربر یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
 
             # Rate limiting: ensure OTP isn't sent too frequently
             if customer.last_otp_request and timezone.now() < customer.last_otp_request + timedelta(seconds=30):
@@ -301,11 +325,11 @@ class SendPasswordResetOTPView(APIView):
             customer.last_otp_request = timezone.now()
             customer.save()
 
-            return Response({"message": "OTP sent for password reset"}, status=status.HTTP_200_OK)
+            return Response({"message": "کد تایید ارسال شد"}, status=status.HTTP_200_OK)
 
         except Exception as e:
             print(f"Unexpected error: {e}")
-            return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "کد تایید نشد"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VerifyPasswordResetOTPView(APIView):
     permission_classes = [AllowAny]
@@ -317,7 +341,7 @@ class VerifyPasswordResetOTPView(APIView):
 
         if not phone_number or not otp_code or not new_password:
             return Response(
-                {"error": "Phone number, OTP code, and new password are required"},
+                {"error": "شماره و کد تایید و پسورد جدید مورد نیاز است"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -325,7 +349,7 @@ class VerifyPasswordResetOTPView(APIView):
             # Check if customer exists
             customer = Customer.objects.filter(phone_number=phone_number).first()
             if not customer:
-                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": "کاربر یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
 
             # Verify OTP
             is_valid = verify_otp(customer, otp_code, purpose="password_reset")
@@ -333,21 +357,21 @@ class VerifyPasswordResetOTPView(APIView):
             
             if not is_valid:
                 
-                return Response({"error": "Invalid or expired OTP"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "زمان کد تایید به پایان رسید یا کد اشتباه است"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Reset the password if OTP is valid
             try:
                 validate_password(new_password)  # Django's built-in password validation
                 customer.set_password(new_password)  # Hash and save the password
                 customer.save()  # Ensure to save the object
-                return Response({"message": "password is chaneged"}, status=status.HTTP_200_OK)
+                return Response({"message": "پسورد تغییر یافت"}, status=status.HTTP_200_OK)
             except ValidationError as e:
-                return Response({"error": f"Password is invalid: {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": f"پسورد اشتباه است {', '.join(e.messages)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
         except Exception as e:
             print(f"Unexpected error: {e}")
-            return Response({"error": "Failed to verify OTP and reset password"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "کد تایید و پسورد تایید نشد"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
 class LogoutView(APIView):
@@ -456,6 +480,7 @@ class BasketListCreateView(APIView):
         basket, created = Basket.objects.get_or_create(customer=request.user)
         return Response(BasketSerializer(basket).data, status=status.HTTP_201_CREATED)
 
+
 class BasketItemCreateView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -476,7 +501,7 @@ class BasketItemCreateView(APIView):
         try:
             product_variant = ProductVariant.objects.get(id=product_variant_id)
         except ProductVariant.DoesNotExist:
-            return Response({'error': 'Product variant not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'ویژگی محصول یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
 
         # Create or update the basket item
         basket_item, created = BasketItem.objects.get_or_create(
@@ -498,12 +523,12 @@ class BasketItemCreateView(APIView):
         quantity = request.data.get('quantity')
 
         if not product_variant_id:
-            return Response({'error': 'Product variant ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'آی دی ویژگی محصول مورد نیاز است'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             product_variant = ProductVariant.objects.get(id=product_variant_id)
         except ProductVariant.DoesNotExist:
-            return Response({'error': 'Product variant not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'ویژگی محصول یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             basket_item = BasketItem.objects.get(basket=basket, product_variant=product_variant)
@@ -525,16 +550,14 @@ class PaymentRequestView(APIView):
         basket = get_object_or_404(Basket, id=basket_id, customer=customer)
         basket_items = BasketItem.objects.filter(basket=basket, payment=False)
         
-    
-
         if not basket_items.exists():
-            return Response({'error': 'Basket is empty'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'سبد شما خالی است'}, status=status.HTTP_400_BAD_REQUEST)
         
         for item in basket_items:
-            if item.product.stock < item.quantity:
-                return Response({'error': f'Insufficient stock for product {item.product.name}'}, status=status.HTTP_400_BAD_REQUEST)
+            if item.product_variant.stock < item.quantity:
+                return Response({'error': f'محصول نا موجود است {item.product_variant.name}'}, status=status.HTTP_400_BAD_REQUEST)
             
-        total_amount = sum(item.product.price * item.quantity for item in basket_items)
+        total_amount = sum(item.product_variant.price * item.quantity for item in basket_items)
 
         data = {
             "merchant_id": settings.ZARINPAL_MERCHANT_ID,
@@ -566,19 +589,19 @@ class PaymentRequestView(APIView):
             return Response({'error': f'An error occurred: {err}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class PaymentVerifyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request, basket_id):
         authority = request.GET.get('Authority', '')
-        customer = request.user
-        basket = get_object_or_404(Basket, id=basket_id, customer=customer)
+        # Get the basket by ID only
+        basket = get_object_or_404(Basket, id=basket_id)
 
         # Calculate total amount for all items in the basket
         basket_items = BasketItem.objects.filter(basket=basket)
         if not basket_items.exists():
-            return Response({'status': False, 'code': 'Basket is empty'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': False, 'code': 'سبد خرید خالی است'}, status=status.HTTP_400_BAD_REQUEST)
 
-        total_amount = sum(item.product.price * item.quantity for item in basket_items)
+        total_amount = sum(item.product_variant.price * item.quantity for item in basket_items)
 
         data = {
             "merchant_id": settings.ZARINPAL_MERCHANT_ID,
@@ -599,11 +622,11 @@ class PaymentVerifyView(APIView):
                 
                 # Update stock quantity and mark items as paid
                 for item in basket_items:
-                    product = item.product
-                    if product.stock >= item.quantity:
-                        product.stock -= item.quantity
+                    product_variant = item.product_variant
+                    if product_variant.stock >= item.quantity:
+                        product_variant.stock -= item.quantity
                         item.payment = True
-                        product.save()
+                        product_variant.save()
                         item.save()
                     else:
                         return Response({'status': False, 'code': 'Insufficient stock'}, status=status.HTTP_400_BAD_REQUEST)

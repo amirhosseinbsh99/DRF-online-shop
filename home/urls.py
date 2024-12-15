@@ -9,7 +9,6 @@ from .views import (
     ProductSearchView,
     ProductAdmin,
     ProductDetailAdmin,
-    ProductsView,
     ColorAdmin,
     ColorDetailAdmin,
     CategoryAdmin,
@@ -48,7 +47,7 @@ urlpatterns = [
     
     # Product search
     path('search/', ProductSearchView.as_view(), name='ProductSearchView'),
-    
+
     # Admin product views
     path('padmin/', ProductListAdmin.as_view(), name='ProductListAdmin'),
     path('padmin/product/', ProductAdmin.as_view(), name='ProductAdmin'),

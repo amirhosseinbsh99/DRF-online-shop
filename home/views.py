@@ -1,24 +1,54 @@
-from rest_framework.response import Response
+from rest_framework import (
+    status, 
+    viewsets, 
+    pagination, 
+    filters as drf_filters
+)
 from rest_framework.views import APIView
-from rest_framework import status,viewsets,pagination
-from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
+from rest_framework.generics import (
+    ListAPIView, 
+    RetrieveAPIView
+)
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import ValidationError
-from .models import Product,Category,Color,Size,ProductVariant,ProductImage
-from accounts.models import Customer
-from django.db.models import Count
-from accounts.permissions import IsCustomAdminUser
+from rest_framework.permissions import (
+    IsAuthenticated, 
+    AllowAny
+)
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .serializers import ProductSerializer,CategorySerializer,ColorSerializer,ProductImageSerializer,CustomerSerializer,SizeSerializer,UpdateProductSerializer,ProductVariantSerializer
-from rest_framework import filters as drf_filters
+from django.db.models import (
+    Count, 
+    Q, 
+    Min, 
+    Max
+)
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
-from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticated,AllowAny
-from django.db.models import Q
-from django.db.models import Min, Max
+
+from .models import (
+    Product, 
+    Category, 
+    Color, 
+    Size, 
+    ProductVariant, 
+    ProductImage
+)
+from accounts.models import Customer
+from accounts.permissions import IsCustomAdminUser
+from .serializers import (
+    ProductSerializer, 
+    CategorySerializer, 
+    ColorSerializer, 
+    ProductImageSerializer, 
+    CustomerSerializer, 
+    SizeSerializer, 
+    UpdateProductSerializer, 
+    ProductVariantSerializer
+)
 import json
-from rest_framework.generics import ListAPIView,RetrieveAPIView
+
 
 
 class ProductDetailBySlugView(RetrieveAPIView):
@@ -111,7 +141,7 @@ class ProductsByCategory(APIView):
             # Fetch the category by its title
             category = Category.objects.get(title=category_name)
         except Category.DoesNotExist:
-            return Response({"error": "Category not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "دسته بندی پیدا نشد"}, status=status.HTTP_404_NOT_FOUND)
 
         # Filter products by the retrieved category
         products = Product.objects.filter(category=category)
@@ -451,7 +481,7 @@ class ProductSearchAdmin(APIView):
             serializer = ProductSerializer(products, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response({"error": "No search query provided"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "جست و جو خالی است"}, status=status.HTTP_400_BAD_REQUEST)
         
         #http://127.0.0.1:8000/padmin/search/?q=nike
 
@@ -467,7 +497,7 @@ class CategoryAdmin(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
+
 
     def get(self, request):
         category = Category.objects.all().order_by('-created_date')
