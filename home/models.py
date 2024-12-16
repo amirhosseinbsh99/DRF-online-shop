@@ -72,10 +72,18 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
-    def save(self, *args, **kwargs):
+    def save(self, args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name.replace(" ", "-"), allow_unicode=True)
-        super().save(*args, **kwargs)
+            potential_slug = slugify(self.name.replace(" ", "-"), allow_unicode=True)
+            slug_exists = Product.objects.filter(slug=potential_slug).exists()
+            if slug_exists:
+                raise ValueError("محصول تکراری است.")
+            self.slug = potential_slug
+
+        if self.stock <= 0:
+            self.available = False
+        super().save(args, kwargs)
+   
 
     def save(self, *args, **kwargs):
         if self.stock <= 0:

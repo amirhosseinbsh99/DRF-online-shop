@@ -519,7 +519,12 @@ class BasketItemCreateView(APIView):
         try:
             product_variant = ProductVariant.objects.get(id=product_variant_id)
         except ProductVariant.DoesNotExist:
-            return Response({'error': 'ویژگی محصول یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': ' محصول یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
+        
+         # Check if the product variant has already been paid for in this basket
+        if BasketItem.objects.filter(basket=basket, product_variant=product_variant, payment=True).exists():
+            return Response({'error': 'این ویژگی محصول قبلاً پرداخت شده است و نمی توان آن را دوباره اضافه کرد'}, 
+                            status=status.HTTP_400_BAD_REQUEST)
 
         # Create or update the basket item
         basket_item, created = BasketItem.objects.get_or_create(
