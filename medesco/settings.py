@@ -162,8 +162,7 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
+
 
 STATIC_URL = 'static/'
 
@@ -182,8 +181,11 @@ AUTHENTICATION_BACKENDS = [
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'https://zworks.ir',
-    'https://medesco.ir'
-    # Add other origins here
+    'https://medesco.ir',
+    'https://medesco.liara.run',
+
+
+    
 ]
 CORS_ALLOW_CREDENTIALS = True
 

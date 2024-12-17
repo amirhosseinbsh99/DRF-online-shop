@@ -70,8 +70,8 @@ urlpatterns = [
     
     # Admin category views
     path('padmin/category/', CategoryAdmin.as_view(), name='CategoryAdmin'),
-    path('padmin/category/create/', CategoryAdmin.as_view(), name='CreateCategoryAdmin'),
-    path('padmin/category/<str:name>/', CategoryDetailAdmin.as_view(), name='EditCategoryAdmin'),
+    path('padmin/category/create/', CategoryAdmin.as_view(), name='create-category-admin'),
+    path('padmin/category/<int:id>/', CategoryDetailAdmin.as_view(), name='EditCategoryAdmin'),
 
     path('padmin/OrderHistoryAdminView/', OrderHistoryAdminView.as_view(), name='OrderHistoryAdminView'),
     

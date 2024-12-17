@@ -180,12 +180,12 @@ class ProductCheckboxSerializer(serializers.ModelSerializer):
     
     
 class CategorySerializer(serializers.ModelSerializer):
-    parent_id = serializers.IntegerField(source='parent.id', read_only=True)  # Show parent id
     parent_title = serializers.CharField(source='parent.title', read_only=True)  # Show parent title
+    parent = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False)
 
     class Meta:
         model = Category
-        fields = ['id','title', 'parent_id', 'parent_title']  # Include both parent id and title
+        fields = ['id','parent','title', 'parent_id', 'parent_title']  # Include both parent id and title
 
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:

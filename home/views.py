@@ -509,9 +509,9 @@ class CategoryDetailAdmin(APIView):
     authentication_classes = [JWTAuthentication]
     # permission_classes = [IsAdminUser]
 
-    def get(self, request, name):
+    def get(self, request, id):
         # Retrieve the category by name
-        category = get_object_or_404(Category, name=name)
+        category = get_object_or_404(Category, id=id)
         
         # Get the child categories (if any)
         child_categories = category.children.all()  # 'children' is the related_name for the parent field
@@ -530,17 +530,17 @@ class CategoryDetailAdmin(APIView):
 
         return Response(data, status=status.HTTP_200_OK)
 
-    def put(self, request, name):
+    def put(self, request, id):
         # Retrieve the category by name
-        category = get_object_or_404(Category, name=name)
+        category = get_object_or_404(Category, id=id)
         serializer = CategorySerializer(category, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def delete(self, request, name):
+    def delete(self, request, id):
         # Retrieve the category by name
-        category = get_object_or_404(Category, name=name)
+        category = get_object_or_404(Category, id=id)
         category.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
