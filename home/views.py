@@ -263,9 +263,9 @@ class ProductListCreateAdmin(APIView):
         # Validate the product data
         product_serializer = ProductSerializer(data=request.data, context={'request': request})
 
-        # Check if a product with the same slug already exists
-        slug = request.data.get('slug')
-        if Product.objects.filter(slug=slug).exists():
+        # Check if a product with the same name already exists
+        name = request.data.get('name')
+        if Product.objects.filter(name=name).exists():
             return Response({'error': 'محصولی با این نام وجود دارد'}, status=status.HTTP_400_BAD_REQUEST)
 
         # If product does not exist, validate and save
@@ -406,10 +406,7 @@ class UploadProductImagesView(APIView):
         except Product.DoesNotExist:
             return Response({'error': 'محصول یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Ensure that the user is authorized to upload images (optional)
-        # if request.user != product.owner:
-        #     return Response({'error': 'You are not authorized to upload images to this product'}, 
-        #                     status=status.HTTP_403_FORBIDDEN)
+        
 
         # Check if there are image files in the request
         if 'images' not in request.FILES:

@@ -32,19 +32,21 @@ from .views import (
     DeleteProductImageView,
     GetProductImagesView
 )
+
 from accounts.views import OrderHistoryAdminView
 
 app_name = 'home'
 
 # Configure the router
 router = DefaultRouter()
+
 # router.register(r'products', ProductViewSet)
 
 
 urlpatterns = [
     # Home view
     path('', HomeView.as_view(), name='HomeView'),
-    
+
     # Product search
     path('search/', ProductSearchView.as_view(), name='ProductSearchView'),
 
@@ -57,24 +59,27 @@ urlpatterns = [
     path('padmin/<slug:product_slug>/images/', GetProductImagesView.as_view(), name='get-product-image'),
     path('padmin/product/<int:id>/', ProductDetailAdmin.as_view(), name='EditProductAdmin'),
     path('padmin/customers/', CustomerListView.as_view(), name='CustomerListView'),
+
     # Admin color views
     path('padmin/product/color/', ColorAdmin.as_view(), name='ColorAdmin'),
     path('padmin/product/color/<int:id>/', ColorDetailAdmin.as_view(), name='ColorDetailAdmin'),
+
     #Admin Size
     path('padmin/sizes/', SizeListView.as_view(), name='size-list'),
     path('padmin/sizes/create/', SizeCreateView.as_view(), name='size-create'),
     path('padmin/sizes/<int:pk>/', SizeUpdateView.as_view(), name='size-update'),
+
     #admin variant
     path('padmin/product-variant/create/', ProductVariantAdminView.as_view(), name='product_variant_create'),
     path('padmin/product-variant/<int:id>/', ProductVariantAdminView.as_view(), name='product_variant_update_delete'),  
-    
+
     # Admin category views
     path('padmin/category/', CategoryAdmin.as_view(), name='CategoryAdmin'),
     path('padmin/category/create/', CategoryAdmin.as_view(), name='create-category-admin'),
     path('padmin/category/<int:id>/', CategoryDetailAdmin.as_view(), name='EditCategoryAdmin'),
 
     path('padmin/OrderHistoryAdminView/', OrderHistoryAdminView.as_view(), name='OrderHistoryAdminView'),
-    
+
     # Products by category & color
     path('products/', ProductViewSet.as_view({'get': 'list'}), name='products-list'),
     path('products/category/', AllCategories.as_view(), name='AllCategories'),
@@ -88,7 +93,7 @@ urlpatterns = [
     path('shoes/', ShoeView.as_view(), name='ShoeView'),
     path('shirts/', ShirtView.as_view(), name='ShirtView'),
     path('pants/', PantsView.as_view(), name='PantsView'),
-    
+
     # Include the API router for product-related actions
     # path('api/', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

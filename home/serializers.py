@@ -119,12 +119,15 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         }
 
 class ProductSerializer(serializers.ModelSerializer):
-    colors = ColorSerializer(many=True, read_only=True)
-    sizes = SizeSerializer(many=True, read_only=True)  # This should reference sizes via the related name
     variants = ProductVariantSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     thumbnail = serializers.ImageField(required=False)
     discounted_price = serializers.SerializerMethodField()
+
+    def validate_slug(self, value):
+        if Product.objects.filter(slug=value).exists():
+            raise serializers.ValidationError("محصولی با این نام وجود دارد.")
+        return value
 
     def create(self, validated_data):
         colors_data = validated_data.pop('color_ids', [])
@@ -159,7 +162,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'category', 'name', 'brand', 'description', 'model_number',
             'available', 'price', 'discount_percentage', 'discounted_price', 'stock',
-            'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images', 'variants', 'sizes', 'colors',
+            'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images', 'variants'
         ]
 
     def get_discounted_price(self, obj):
