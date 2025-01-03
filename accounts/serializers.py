@@ -47,11 +47,19 @@ class CustomerLoginSerializer(serializers.Serializer):
         if len(value) < 8:
             raise serializers.ValidationError("پسورد باید 8 رقمی باشد")
         return value
-
-class DashboardViewSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = Customer
-        exclude = ['is_admin','is_superuser','id','groups','user_permissions','is_staff','is_active']
+        exclude = ['is_superuser','id','groups','user_permissions','is_staff','is_active']
+
+class DashboardViewSerializer(serializers.ModelSerializer):
+    is_admin = serializers.BooleanField(read_only=True)
+    phone_number = serializers.CharField(read_only=True)
+    username = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Customer
+        exclude = ['is_superuser','id','groups','user_permissions','is_staff','is_active']
 
 
 class BasketItemSerializer(serializers.ModelSerializer):

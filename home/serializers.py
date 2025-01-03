@@ -93,8 +93,38 @@ class UpdateProductSerializer(serializers.ModelSerializer):
 
 class ProductVariantSerializer(serializers.ModelSerializer):
     
-    color = serializers.SerializerMethodField()
-    size = serializers.SerializerMethodField()
+    
+    # Fields for detailed output (read-only)
+    color_details = serializers.SerializerMethodField()
+    size_details = serializers.SerializerMethodField()
+    discounted_price = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductVariant
+        fields = ['id', 'product', 'color', 'size','color_details','size_details', 'stock', 'price','discount_percentage', 'discounted_price']
+
+    def get_discounted_price(self, obj):
+        return obj.get_discounted_price()
+
+    def get_color_details(self, obj):
+        """Retrieve detailed color information."""
+        color = obj.color
+        return {
+            "id": color.id,
+            "name": color.name,
+            "hex_code": color.hex_code
+        }
+
+    def get_size_details(self, obj):
+        """Retrieve detailed size information."""
+        return {
+            "id": obj.size.id,
+            "name": obj.size.name
+        }
+    
+class ProductVariantAdminSerializer(serializers.ModelSerializer):
+    color = serializers.PrimaryKeyRelatedField(queryset=Color.objects.all())
+    size = serializers.PrimaryKeyRelatedField(queryset=Size.objects.all())
     discounted_price = serializers.SerializerMethodField()
 
     class Meta:
@@ -108,6 +138,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         """Retrieve color details (name and hex code)."""
         color = obj.color
         return {
+            "id": color.id,  # Add color id
             "name": color.name,
             "hex_code": color.hex_code
         }
@@ -115,6 +146,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     def get_size(self, obj):
         """Retrieve size details (name)."""
         return {
+            "id": obj.size.id,  # Add size id
             "name": obj.size.name
         }
 
@@ -123,6 +155,9 @@ class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     thumbnail = serializers.ImageField(required=False)
     discounted_price = serializers.SerializerMethodField()
+    category_title = serializers.CharField(source='category.title', read_only=True)
+
+    
 
     def validate_slug(self, value):
         if Product.objects.filter(slug=value).exists():
@@ -160,7 +195,7 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'category', 'name', 'brand', 'description', 'model_number',
+            'id', 'category','category_title', 'name', 'brand', 'description', 'model_number',
             'available', 'price', 'discount_percentage', 'discounted_price', 'stock',
             'material', 'created_at', 'updated_at', 'slug', 'thumbnail', 'images', 'variants'
         ]
@@ -189,6 +224,16 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id','parent','title', 'parent_id', 'parent_title']  # Include both parent id and title
+
+    def update(self, instance, validated_data):
+        parent = validated_data.get('parent', None)
+        if parent is None:  # If parent is explicitly set to None, remove the parent
+            instance.parent = None
+        else:
+            instance.parent = parent
+        instance.title = validated_data.get('title', instance.title)
+        instance.save()
+        return instance
 
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:

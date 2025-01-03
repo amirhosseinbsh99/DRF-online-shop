@@ -45,7 +45,8 @@ from .serializers import (
     CustomerSerializer, 
     SizeSerializer, 
     UpdateProductSerializer, 
-    ProductVariantSerializer
+    ProductVariantSerializer,
+    ProductVariantAdminSerializer
 )
 import json
 
@@ -184,7 +185,9 @@ class ProductFilter(filters.FilterSet):
     permission_classes = [AllowAny]
     category = filters.ModelChoiceFilter(queryset=Category.objects.all())
     price = filters.RangeFilter()
-    size = filters.ChoiceFilter(choices=lambda: [(size, size) for size in Product.objects.values_list('size', flat=True).distinct()])
+    sizes = filters.ChoiceFilter(
+        choices=lambda: [(sizes, sizes) for sizes in Product.objects.values_list('sizes', flat=True).distinct()]
+    )
     
     # Custom filter for colors
     color = filters.CharFilter(method='filter_by_color')
@@ -201,7 +204,7 @@ class ProductFilter(filters.FilterSet):
 
     class Meta:
         model = Product
-        fields = ['category', 'price', 'size', 'color','ordering']
+        fields = ['category', 'price', 'sizes', 'color','ordering']
 
     def filter_by_color(self, queryset, name, value):
         return queryset.filter(colors__name__icontains=value)
@@ -210,7 +213,7 @@ class ProductFilter(filters.FilterSet):
 class ProductSearchView(ListAPIView):
     permission_classes = [AllowAny]
     pagination_class = ProductPagination
-    queryset = Product.objects.all()
+    queryset = Product.objects.all().order_by('-created_at')
     serializer_class = ProductSerializer
     filter_backends = [drf_filters.SearchFilter, DjangoFilterBackend]
     # Use the correct lookup for filtering by colors (through the ManyToMany relation)
@@ -378,7 +381,15 @@ class ProductVariantAdminView(APIView):
     def put(self, request, id, *args, **kwargs):
         # Update an existing ProductVariant
         product_variant = self.get_object(id)
-        serializer = ProductVariantSerializer(
+        product = request.data.get('product')
+        color = request.data.get('color')
+        size = request.data.get('size')
+
+        # Check if the combination of product, color, and size already exists (excluding the current product_variant)
+        if ProductVariant.objects.filter(product=product, color=color, size=size).exclude(id=product_variant.id).exists():
+            raise ValidationError("یک محصول با این ترکیب رنگ و اندازه از قبل وجود دارد.")
+
+        serializer = ProductVariantAdminSerializer(
             product_variant, 
             data=request.data, 
             partial=kwargs.get('partial', False), 
